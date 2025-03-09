@@ -238,7 +238,6 @@ export class AppComponent implements AfterViewInit {
     }
 
     onDragStart(event: DragEvent, item: any) {
-        console.log('Drag started with item:', item._id);
 
         // Stop event from bubbling up to parent elements
         event.stopPropagation();
@@ -273,7 +272,30 @@ export class AppComponent implements AfterViewInit {
         const validation = this.validateMapping(sourceItem._id, targetItem._id);
 
         if (!validation.isValid) {
-            alert(validation.message);
+            const forceMap = confirm(`${validation.message}\n\nWould you like to force map anyway?`);
+            if (forceMap) {
+                this.addMapping(sourceItem._id, targetItem._id, { isForceMapping: true });
+                return;
+            }
+            return;
+        }
+
+        if (validation.requiresIndex) {
+            const forceMap = confirm('This mapping requires an array index. Click OK to force map or Cancel to specify an index.');
+            if (forceMap) {
+                this.addMapping(sourceItem._id, targetItem._id, { isForceMapping: true });
+            } else {
+                const index = prompt('Enter the array index:');
+                if (index !== null) {
+                    const numIndex = parseInt(index);
+                    if (!isNaN(numIndex) && numIndex >= 0) {
+                        this.addMapping(sourceItem._id, targetItem._id, { index: numIndex });
+                    } else {
+                        alert('Please enter a valid non-negative number');
+                        return;
+                    }
+                }
+            }
             return;
         }
 
@@ -288,51 +310,16 @@ export class AppComponent implements AfterViewInit {
             );
 
             if (hasConflict) {
-                // Use the custom message if provided, otherwise generate one
-                const confirmMessage = message || `This mapping conflicts with ${conflictingMappings.length} existing mapping(s). Remove conflicting mappings?`;
-
-                // For the case where source is mapped to child of target, don't allow
-                const isSourceMappedToChild = targetItem.type === 'Object' &&
-                    conflictingMappings.some(m =>
-                        m.sourceId === sourceItem._id &&
-                        this.isChildOf(m.targetId, targetItem._id)
-                    );
-
-                if (isSourceMappedToChild) {
-                    alert(confirmMessage);
-                    return; // Don't allow this mapping
-                }
-
-                if (confirm(confirmMessage)) {
-                    // Remove all conflicting mappings
-                    this.mappings = this.mappings.filter(m =>
-                        !conflictingMappings.some(cm =>
-                            cm.sourceId === m.sourceId && cm.targetId === m.targetId
-                        )
-                    );
-
-                    // Add the new mapping
-                    this.mappings.push({
-                        sourceId: sourceItem._id,
-                        targetId: targetItem._id
+                const forceMap = confirm(`${message}\n\nWould you like to force map anyway?`);
+                if (forceMap) {
+                    conflictingMappings.forEach(mapping => {
+                        this.removeMapping(mapping.sourceId, mapping.targetId);
                     });
-
-                    this.selectedTargetId = targetItem._id;
-                    this.logMappings();
+                    this.addMapping(sourceItem._id, targetItem._id, { isForceMapping: true });
                 }
             } else {
-                // No conflicts, add the mapping
-                this.mappings.push({
-                    sourceId: sourceItem._id,
-                    targetId: targetItem._id
-                });
-
-                this.selectedTargetId = targetItem._id;
-                this.logMappings();
+                this.addMapping(sourceItem._id, targetItem._id);
             }
-
-            // After adding a new mapping, redraw the lines
-            setTimeout(() => this.drawConnectionLines(), 100);
         }
     }
 
@@ -714,7 +701,40 @@ export class AppComponent implements AfterViewInit {
             return { isValid: false, message: 'Invalid source or target' };
         }
 
-        // Check if target parent object is already mapped
+        const targetParent = this.findParentField(target);
+        const sourceParent = this.findParentField(source);
+
+        // Check array item to array item mapping first
+        if (targetParent?.type === 'Array' && sourceParent?.type === 'Array' &&
+            target.type !== 'Array' && source.type !== 'Array') {
+
+            const parentArraysMapped = this.mappings.some(m =>
+                m.sourceId === sourceParent._id && m.targetId === targetParent._id
+            );
+
+            if (!parentArraysMapped) {
+                return {
+                    isValid: false,
+                    message: 'Parent arrays must be mapped before mapping their items.',
+                    isTypeError: true
+                };
+            }
+
+            // If parent arrays are mapped, allow the item mapping without index
+            return { isValid: true };
+        }
+
+        // If target is an array item and source is not from a mapped array parent
+        if (targetParent?.type === 'Array' &&
+            (sourceParent?.type !== 'Array' || !this.mappings.some(m => m.sourceId === sourceParent?._id))) {
+            return {
+                isValid: true,
+                requiresIndex: true,
+                message: 'This mapping requires an array index. Would you like to specify an index or force map?'
+            };
+        }
+
+        // Rest of the validation logic...
         const targetParentMapping = this.findParentObjectMapping(targetId);
         if (targetParentMapping) {
             return {
@@ -724,12 +744,18 @@ export class AppComponent implements AfterViewInit {
             };
         }
 
-        // Continue with array validations
-        if (target.type === 'Array' && source.type !== 'Array') {
+        // Handle array mappings
+        if (target.type === 'Array' || targetParent?.type === 'Array') {
+            // If both are arrays, allow the mapping
+            if (source.type === 'Array' && target.type === 'Array') {
+                return { isValid: true };
+            }
+
+            // For any other source type mapping to array/array item, require index
             return {
-                isValid: false,
-                message: 'Cannot map a non-array to an array. Create an item instead.',
-                isTypeError: true
+                isValid: true,
+                requiresIndex: true,
+                message: 'This mapping requires an array index. Would you like to specify an index or force map?'
             };
         }
 
@@ -773,6 +799,16 @@ export class AppComponent implements AfterViewInit {
         if (target) return target._id;
 
         return null;
+    }
+
+    // Add helper method to find parent field
+    private findParentField(field: FieldDefinition): FieldDefinition | null {
+        if (field.dataPathSegs.length <= 1) return null;
+
+        const parentPath = field.dataPathSegs.slice(0, -1).join('.');
+        const parentId = this.findIdByPath(parentPath);
+
+        return parentId ? (this.findSourceById(parentId) || this.findTargetById(parentId)) : null;
     }
 
     private addMapping(sourceId: string, targetId: string, options?: { index?: number, isForceMapping?: boolean }) {
