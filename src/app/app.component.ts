@@ -1417,4 +1417,60 @@ export class AppComponent implements AfterViewInit {
             !!this.targetConfigs[targetId] ||
             !!this.conditionalConfigs[targetId];
     }
+
+    applyPayload(payload: MappingPayload[]) {
+        // Clear existing mappings and configurations
+        this.mappings = [];
+        this.targetConfigs = {};
+        this.conditionalConfigs = {};
+        this.targetMappingStates = {};
+
+        // Recursive function to process each payload item
+        const processPayloadItem = (item: MappingPayload) => {
+            // Set mapping type
+            this.targetMappingStates[item.target._id] = {
+                isConditional: item.expression.type === 'conditional'
+            };
+
+            // Handle simple mapping
+            if (item.expression.type === 'simple') {
+                // Set configuration if exists
+                if (item.expression.value) {
+                    this.targetConfigs[item.target._id] = item.expression.value;
+                }
+
+                // Create mappings for sources
+                item.sources.forEach(source => {
+                    this.mappings.push({
+                        sourceId: source._id,
+                        targetId: item.target._id,
+                        // Remove type property as it's not in the interface
+                    });
+                });
+            }
+
+            // Handle conditional mapping
+            if (item.expression.type === 'conditional' && item.expression.conditions) {
+                this.conditionalConfigs[item.target._id] = {
+                    if: item.expression.conditions.if,
+                    elseIf: item.expression.conditions.elseIf || [],
+                    else: item.expression.conditions.else
+                };
+
+                // Set hasElseBlock if else condition exists
+                if (item.target._id === this.selectedTargetId) {
+                    this.hasElseBlock = item.expression.conditions.else !== undefined;
+                }
+            }
+
+            // Process children recursively
+            item.children.forEach(child => processPayloadItem(child));
+        };
+
+        // Process each root level item
+        payload.forEach(item => processPayloadItem(item));
+
+        // Trigger change detection and UI updates
+        this.drawConnectionLines();
+    }
 }
