@@ -54,8 +54,21 @@
                     </span>
                 </div>
                 <div class="card-body">
+                    <!-- Show only mapped sources -->
+                    <div class="available-sources mb-3">
+                        <h6 class="text-muted mb-2">Mapped Sources:</h6>
+                        <div class="source-pills">
+                            <span *ngFor="let source of getMappedSources(selectedTargetId)"
+                                class="badge bg-light text-dark me-2 mb-2 draggable-source" draggable="true"
+                                (dragstart)="onSourceDragStart($event, source)">
+                                {{ source.dataPath }}
+                            </span>
+                        </div>
+                    </div>
+                    <!-- Make textarea a drop target -->
                     <textarea class="form-control code-view" [value]="getSourceIdsForTarget(selectedTargetId)"
-                        (input)="onConfigChange($event, selectedTargetId)">
+                        (input)="onConfigChange($event, selectedTargetId)" (dragover)="onTextAreaDragOver($event)"
+                        (drop)="onTextAreaDrop($event)">
                     </textarea>
                 </div>
             </div>

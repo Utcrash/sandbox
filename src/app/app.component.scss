@@ -58,8 +58,6 @@
 }
 
 .target-list {
-  border: 2px dashed #dee2e6;
-
   &.drag-over {
     background-color: #e9ecef;
     border-color: #6c757d;
@@ -87,7 +85,7 @@
 }
 
 .code-view {
-  min-height: 200px;
+  min-height: 150px;
   font-family: monospace;
   font-size: 14px;
   background-color: #282c34;
@@ -328,5 +326,23 @@
   color: #6c757d;
   &:hover {
     color: #0d6efd;
+  }
+}
+
+.available-sources {
+  border-bottom: 1px solid #dee2e6;
+  padding-bottom: 1rem;
+
+  .source-pills {
+    .draggable-source {
+      cursor: grab;
+      user-select: none;
+      padding: 0.5rem;
+      border: 1px solid #dee2e6;
+
+      &:hover {
+        background-color: #e9ecef;
+      }
+    }
   }
 }

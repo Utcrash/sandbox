@@ -76,27 +76,17 @@ export class AppComponent implements AfterViewInit {
     }
 
     getSourceIdsForTarget(targetId: string): string {
-        if (this.targetConfigs[targetId]) {
-            return this.targetConfigs[targetId];
-        }
+        const mappedSources = this.getMappedSources(targetId);
+        if (!mappedSources.length) return '';
 
-        return this.mappings
-            .filter(m => m.targetId === targetId)
-            .map(m => {
-                const source = this.findSourceById(m.sourceId);
-                if (!source) return '';
+        // Get existing config or create new template with mustache syntax
+        const existingConfig = this.targetConfigs[targetId];
+        if (existingConfig) return existingConfig;
 
-                // For array mappings with index
-                if ((source.type === 'Array' || m.sourceId.includes('_item_')) &&
-                    (m as ArrayMapping).index !== undefined) {
-                    return `${source.dataPath}[${(m as ArrayMapping).index}]`;
-                }
-
-                // For all other mappings (including forced array mappings)
-                return source.dataPath;
-            })
-            .filter(path => path.length > 0)
-            .join('\n');
+        // Create new template with all mapped sources
+        return mappedSources
+            .map(source => `{{${source.dataPath}}}`)
+            .join(' ');
     }
 
     isTargetConfigured(targetId: string): boolean {
@@ -104,12 +94,21 @@ export class AppComponent implements AfterViewInit {
     }
 
     onConfigChange(event: Event, targetId: string) {
-        const value = (event.target as HTMLTextAreaElement).value;
-        if (value.trim()) {
-            this.targetConfigs[targetId] = value;
-        } else {
+        const textarea = event.target as HTMLTextAreaElement;
+        const newValue = textarea.value.trim();
+
+        if (newValue === '') {
+            // If textarea is empty, remove all mappings and config
+            const mappingsToRemove = this.mappings.filter(m => m.targetId === targetId);
+            mappingsToRemove.forEach(mapping => {
+                this.removeMapping(mapping.sourceId, mapping.targetId, null);
+            });
             delete this.targetConfigs[targetId];
+            return;
         }
+
+        // Just update the config value - no pattern checking
+        this.targetConfigs[targetId] = newValue;
     }
 
     toggleTarget(targetId: string) {
@@ -322,7 +321,7 @@ export class AppComponent implements AfterViewInit {
                 const forceMap = confirm(`${message}\n\nWould you like to force map anyway?`);
                 if (forceMap) {
                     conflictingMappings.forEach(mapping => {
-                        this.removeMapping(mapping.sourceId, mapping.targetId);
+                        this.removeMapping(mapping.sourceId, mapping.targetId, null);
                     });
                     this.addMapping(sourceItem._id, targetItem._id, { isForceMapping: true });
                 }
@@ -683,7 +682,7 @@ export class AppComponent implements AfterViewInit {
         return ids;
     }
 
-    removeMapping(sourceId: string, targetId: string, event?: MouseEvent) {
+    removeMapping(sourceId: string, targetId: string, event: Event | null) {
         if (event) {
             event.stopPropagation();
         }
@@ -693,8 +692,24 @@ export class AppComponent implements AfterViewInit {
             !(m.sourceId === sourceId && m.targetId === targetId)
         );
 
+        // Update the config if it exists
+        if (this.targetConfigs[targetId]) {
+            const source = this.findSourceById(sourceId);
+            if (source) {
+                const mustachePattern = `{{${source.dataPath}}}`;
+                this.targetConfigs[targetId] = this.targetConfigs[targetId]
+                    .replace(mustachePattern, '')
+                    .trim();
+            }
+        }
+
+        // Remove config if empty
+        if (this.targetConfigs[targetId]?.trim() === '') {
+            delete this.targetConfigs[targetId];
+        }
+
         // Redraw connection lines
-        setTimeout(() => this.drawConnectionLines(), 100);
+        this.drawConnectionLines();
     }
 
     // Add a debug method to help troubleshoot
@@ -949,6 +964,48 @@ export class AppComponent implements AfterViewInit {
                 const mapping = this.findTargetById(m.targetId);
                 return mapping && !mapping.dataPath.startsWith(arrayField.dataPath + `[${lastIndex}]`);
             });
+        }
+    }
+
+    onSourceDragStart(event: DragEvent, source: FieldDefinition) {
+        if (event.dataTransfer) {
+            // Set just the dataPath - we'll add mustache syntax on drop
+            event.dataTransfer.setData('text/plain', source.dataPath);
+            event.dataTransfer.effectAllowed = 'copy';
+        }
+    }
+
+    onTextAreaDragOver(event: DragEvent) {
+        event.preventDefault();
+        if (event.dataTransfer) {
+            event.dataTransfer.dropEffect = 'copy';
+        }
+    }
+
+    onTextAreaDrop(event: DragEvent) {
+        event.preventDefault();
+        const textarea = event.target as HTMLTextAreaElement;
+        const dataPath = event.dataTransfer?.getData('text/plain');
+
+        if (dataPath) {
+            // Get cursor position or end of text
+            const cursorPos = textarea.selectionStart || textarea.value.length;
+            const textBefore = textarea.value.substring(0, cursorPos);
+            const textAfter = textarea.value.substring(cursorPos);
+
+            // Insert the dataPath with mustache syntax only during drop
+            const newValue = `${textBefore}{{${dataPath}}}${textAfter}`;
+
+            // Update textarea value
+            textarea.value = newValue;
+
+            // Trigger the config change
+            this.onConfigChange({ target: textarea } as any, this.selectedTargetId!);
+
+            // Set cursor position after the inserted text
+            const newCursorPos = cursorPos + dataPath.length + 6; // +6 for {{ }} and spaces
+            textarea.setSelectionRange(newCursorPos, newCursorPos);
+            textarea.focus();
         }
     }
 }
