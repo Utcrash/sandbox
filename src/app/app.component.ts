@@ -66,6 +66,7 @@ interface MappingPayload {
         type: string;
         dataPath: string;
         dataPathSegs: string[];
+        mappingType?: 'copy' | 'iterate';
     }>;
     mappingType?: 'copy' | 'iterate';
 }
@@ -114,6 +115,8 @@ export class AppComponent implements AfterViewInit {
     @ViewChildren('sourceItem') sourceElements!: QueryList<ElementRef>;
     @ViewChildren('targetItem') targetElements!: QueryList<ElementRef>;
     @ViewChild('container') container!: ElementRef;
+    @ViewChild('sourceList') sourceList: ElementRef;
+    @ViewChild('targetList') targetList: ElementRef;
 
     get nodeIds() {
         return [...new Set(this.sources.map(item => item.nodeId))];
@@ -439,7 +442,27 @@ export class AppComponent implements AfterViewInit {
     }
 
     ngAfterViewInit() {
-        setTimeout(() => this.drawConnectionLines(), 100);
+        setTimeout(() => {
+            this.drawConnectionLines();
+
+            // Add scroll listeners
+            this.sourceList?.nativeElement.addEventListener('scroll', () => {
+                this.drawConnectionLines();
+            });
+
+            this.targetList?.nativeElement.addEventListener('scroll', () => {
+                this.drawConnectionLines();
+            });
+        }, 100);
+    }
+
+    ngOnDestroy() {
+        // Clean up scroll listeners
+        const sourceList = document.querySelector('.source-list');
+        const targetList = document.querySelector('.target-list');
+
+        sourceList?.removeEventListener('scroll', () => this.drawConnectionLines());
+        targetList?.removeEventListener('scroll', () => this.drawConnectionLines());
     }
 
     @HostListener('window:resize')
@@ -449,41 +472,38 @@ export class AppComponent implements AfterViewInit {
 
     drawConnectionLines() {
         this.connectionLines = [];
-        const sourceElements = document.querySelectorAll('.source-list .drag-item');
-        const targetElements = document.querySelectorAll('.target-list .drag-item');
-
-        // Get the container's position for relative calculations
-        const containerRect = document.querySelector('.container-fluid')?.getBoundingClientRect();
-        if (!containerRect) return;
+        const container = this.container.nativeElement.getBoundingClientRect();
 
         this.mappings.forEach(mapping => {
-            const sourceElement = Array.from(sourceElements).find(
-                el => el.getAttribute('data-id') === mapping.sourceId
-            );
-            const targetElement = Array.from(targetElements).find(
-                el => el.getAttribute('data-id') === mapping.targetId
-            );
+            const sourceEl = this.container.nativeElement.querySelector(`[data-id="${mapping.sourceId}"]`);
+            const targetEl = this.container.nativeElement.querySelector(`[data-id="${mapping.targetId}"]`);
 
-            if (sourceElement && targetElement) {
-                // Get the header elements (the first div containing the item info)
-                const sourceHeader = sourceElement.querySelector('.p-2.mb-2.bg-light') as HTMLElement;
-                const targetHeader = targetElement.querySelector('.p-2.mb-2.bg-light') as HTMLElement;
+            if (sourceEl && targetEl) {
+                const sourceBounds = sourceEl.getBoundingClientRect();
+                const targetBounds = targetEl.getBoundingClientRect();
 
-                if (sourceHeader && targetHeader) {
-                    const sourceRect = sourceHeader.getBoundingClientRect();
-                    const targetRect = targetHeader.getBoundingClientRect();
+                // Check if elements are in view
+                const sourceList = sourceEl.closest('.source-list');
+                const targetList = targetEl.closest('.target-list');
 
-                    // Calculate positions relative to container
-                    const x1 = sourceRect.right - containerRect.left;
-                    const y1 = sourceRect.top - containerRect.top + (sourceRect.height / 2);
-                    const x2 = targetRect.left - containerRect.left;
-                    const y2 = targetRect.top - containerRect.top + (targetRect.height / 2);
+                if (sourceList && targetList) {
+                    const sourceListBounds = sourceList.getBoundingClientRect();
+                    const targetListBounds = targetList.getBoundingClientRect();
 
-                    this.connectionLines.push({
-                        x1, y1, x2, y2,
-                        sourceId: mapping.sourceId,
-                        targetId: mapping.targetId
-                    });
+                    const sourceVisible = sourceBounds.top >= sourceListBounds.top &&
+                        sourceBounds.bottom <= sourceListBounds.bottom;
+                    const targetVisible = targetBounds.top >= targetListBounds.top &&
+                        targetBounds.bottom <= targetListBounds.bottom;
+
+                    if (sourceVisible && targetVisible) {
+                        this.connectionLines.push({
+                            x1: sourceBounds.right - container.left,
+                            y1: sourceBounds.top + (sourceBounds.height / 2) - container.top,
+                            x2: targetBounds.left - container.left,
+                            y2: targetBounds.top + (targetBounds.height / 2) - container.top,
+                            targetId: mapping.targetId
+                        });
+                    }
                 }
             }
         });
@@ -1310,68 +1330,33 @@ export class AppComponent implements AfterViewInit {
 
     private createMappingPayload(target: FieldDefinition): MappingPayload {
         const isConditional = this.targetMappingStates[target._id]?.isConditional || false;
+        const mapping = this.mappings.find(m => m.targetId === target._id);
+        const conditions = isConditional ? this.conditionalConfigs[target._id]?.conditions || [] : [];
 
-        // Get mapped sources
-        const sources = this.getMappedSources(target._id).map(source => ({
-            _id: source._id,
-            type: source.type,
-            dataPath: source.dataPath,
-            dataPathSegs: source.dataPathSegs
-        }));
-
-        // Create conditions array for conditional mapping
-        let conditions: ConditionalBlock[] | undefined;
-        if (isConditional && this.conditionalConfigs[target._id]) {
-            // First get the 'if' block
-            const ifBlock = this.conditionalConfigs[target._id].conditions.find(c => c.type === 'if');
-            // Then get all 'elseif' blocks
-            const elseifBlocks = this.conditionalConfigs[target._id].conditions.filter(c => c.type === 'elseif');
-            // Finally get the 'else' block
-            const elseBlock = this.conditionalConfigs[target._id].conditions.find(c => c.type === 'else');
-
-            conditions = [
-                // If block
-                ifBlock ? {
-                    type: 'if' as const,
-                    value: ifBlock.value || '',
-                    condition: ifBlock.condition || ''
-                } : null,
-                // Elseif blocks
-                ...elseifBlocks.map(block => ({
-                    type: 'elseif' as const,
-                    value: block.value || '',
-                    condition: block.condition || ''
-                })),
-                // Else block
-                elseBlock ? {
-                    type: 'else' as const,
-                    value: elseBlock.value || '',
-                    condition: undefined
-                } : null
-            ].filter(block => block !== null);
-        }
-
-        const payload: MappingPayload = {
+        return {
             expression: {
                 type: isConditional ? 'conditional' : 'simple',
-                value: isConditional ? '' : (this.targetConfigs[target._id] || ''),
-                conditions: isConditional ? conditions : undefined
+                value: this.targetConfigs[target._id] || '',
+                conditions: conditions
             },
             key: target.dataPathSegs[target.dataPathSegs.length - 1],
-            name: target.dataPath,
+            name: target.dataPathSegs[target.dataPathSegs.length - 1],
             target: {
                 _id: target._id,
                 type: target.type,
                 dataPath: target.dataPath,
                 dataPathSegs: target.dataPathSegs,
-                arrayIndex: target.arrayIndex,
-                arrayItemType: target.type === 'Array' ? target.arrayItemType : undefined
+                arrayItemType: target.arrayItemType
             },
             children: [],
-            sources
+            sources: this.getMappedSources(target._id).map(source => ({
+                _id: source._id,
+                type: source.type,
+                dataPath: source.dataPath,
+                dataPathSegs: source.dataPathSegs
+            })),
+            mappingType: mapping?.mappingType
         };
-
-        return payload;
     }
 
     private isPayloadValid(payload: MappingPayload) {
