@@ -49,12 +49,19 @@
             <div class="card">
                 <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Code View</h5>
-                    <span *ngIf="isTargetConfigured(selectedTargetId)" class="badge bg-info">
-                        <i class="bi bi-gear-fill me-1"></i>Configured
-                    </span>
+                    <div>
+                        <div class="form-check form-switch d-inline-block me-2">
+                            <input class="form-check-input" type="checkbox" [(ngModel)]="isConditionalMapping"
+                                (change)="onMappingTypeChange()">
+                            <label class="form-check-label text-white">Conditional</label>
+                        </div>
+                        <span *ngIf="isTargetConfigured(selectedTargetId)" class="badge bg-info">
+                            <i class="bi bi-gear-fill me-1"></i>Configured
+                        </span>
+                    </div>
                 </div>
                 <div class="card-body">
-                    <!-- Show only mapped sources -->
+                    <!-- Show mapped sources -->
                     <div class="available-sources mb-3">
                         <h6 class="text-muted mb-2">Mapped Sources:</h6>
                         <div class="source-pills">
@@ -65,11 +72,79 @@
                             </span>
                         </div>
                     </div>
-                    <!-- Make textarea a drop target -->
-                    <textarea class="form-control code-view" [value]="getSourceIdsForTarget(selectedTargetId)"
+
+                    <!-- Simple Mapping -->
+                    <textarea *ngIf="!isConditionalMapping" class="form-control code-view"
+                        [value]="getSourceIdsForTarget(selectedTargetId)"
                         (input)="onConfigChange($event, selectedTargetId)" (dragover)="onTextAreaDragOver($event)"
                         (drop)="onTextAreaDrop($event)">
                     </textarea>
+
+                    <!-- Conditional Mapping -->
+                    <div *ngIf="isConditionalMapping" class="conditional-mapping">
+                        <!-- If Block -->
+                        <div class="condition-block if-block">
+                            <div class="condition-header">if</div>
+                            <textarea class="form-control condition-input mb-2"
+                                [value]="getConditionValue('if', selectedTargetId)"
+                                (input)="onConditionChange($event, 'if', selectedTargetId)"
+                                (dragover)="onTextAreaDragOver($event)" (drop)="onTextAreaDrop($event)">
+                            </textarea>
+                            <div class="then-header">then</div>
+                            <textarea class="form-control value-input mb-3"
+                                [value]="getThenValue('if', selectedTargetId)"
+                                (input)="onThenChange($event, 'if', selectedTargetId)"
+                                (dragover)="onTextAreaDragOver($event)" (drop)="onTextAreaDrop($event)">
+                            </textarea>
+                        </div>
+
+                        <!-- Else-if Blocks -->
+                        <div *ngFor="let block of elseIfBlocks; let i = index" class="condition-block else-if-block">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="condition-header">else if</div>
+                                <button class="btn btn-sm btn-outline-danger" (click)="removeElseIfBlock(i)">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                            <textarea class="form-control condition-input mb-2"
+                                [value]="getConditionValue('elseif_' + i, selectedTargetId)"
+                                (input)="onConditionChange($event, 'elseif_' + i, selectedTargetId)"
+                                (dragover)="onTextAreaDragOver($event)" (drop)="onTextAreaDrop($event)">
+                            </textarea>
+                            <div class="then-header">then</div>
+                            <textarea class="form-control value-input mb-3"
+                                [value]="getThenValue('elseif_' + i, selectedTargetId)"
+                                (input)="onThenChange($event, 'elseif_' + i, selectedTargetId)"
+                                (dragover)="onTextAreaDragOver($event)" (drop)="onTextAreaDrop($event)">
+                            </textarea>
+                        </div>
+
+                        <!-- Else Block -->
+                        <div *ngIf="hasElseBlock" class="condition-block else-block">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="condition-header">else</div>
+                                <button class="btn btn-sm btn-outline-danger" (click)="removeElseBlock()">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                            <textarea class="form-control value-input mb-3"
+                                [value]="getThenValue('else', selectedTargetId)"
+                                (input)="onThenChange($event, 'else', selectedTargetId)"
+                                (dragover)="onTextAreaDragOver($event)" (drop)="onTextAreaDrop($event)">
+                            </textarea>
+                        </div>
+
+                        <!-- Add Condition Buttons -->
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-sm btn-outline-primary" (click)="addElseIfBlock()">
+                                <i class="bi bi-plus-circle me-1"></i>Add Else If
+                            </button>
+                            <button *ngIf="!hasElseBlock" class="btn btn-sm btn-outline-primary"
+                                (click)="addElseBlock()">
+                                <i class="bi bi-plus-circle me-1"></i>Add Else
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

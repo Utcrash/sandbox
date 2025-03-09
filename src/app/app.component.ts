@@ -28,6 +28,22 @@ type ValidationResult = {
     requiresConfirmation?: boolean;
 };
 
+interface ConditionalBlock {
+    condition: string;
+    then: string;
+}
+
+interface ConditionalConfig {
+    if: ConditionalBlock;
+    elseIf: ConditionalBlock[];
+    else?: string;
+}
+
+// Add this interface to store mapping type
+interface TargetMappingState {
+    isConditional: boolean;
+}
+
 declare global {
     interface Window {
         angularComponentRef: AppComponent;
@@ -48,6 +64,26 @@ export class AppComponent implements AfterViewInit {
     targetConfigs: { [key: string]: string } = {};
     connectionLines: Array<{ x1: number, y1: number, x2: number, y2: number, sourceId: string, targetId: string }> = [];
     expandedObjects: Set<string> = new Set();
+    hasElseBlock = false;
+    conditionalConfigs: { [targetId: string]: ConditionalConfig } = {};
+
+    // Add property to store mapping type per target
+    private targetMappingStates: { [targetId: string]: TargetMappingState } = {};
+
+    // Getter/setter for isConditionalMapping
+    get isConditionalMapping(): boolean {
+        if (!this.selectedTargetId) return false;
+        return this.targetMappingStates[this.selectedTargetId]?.isConditional || false;
+    }
+
+    set isConditionalMapping(value: boolean) {
+        if (!this.selectedTargetId) return;
+        if (!this.targetMappingStates[this.selectedTargetId]) {
+            this.targetMappingStates[this.selectedTargetId] = { isConditional: value };
+        } else {
+            this.targetMappingStates[this.selectedTargetId].isConditional = value;
+        }
+    }
 
     @ViewChildren('sourceItem') sourceElements!: QueryList<ElementRef>;
     @ViewChildren('targetItem') targetElements!: QueryList<ElementRef>;
@@ -90,7 +126,26 @@ export class AppComponent implements AfterViewInit {
     }
 
     isTargetConfigured(targetId: string): boolean {
-        return !!this.targetConfigs[targetId];
+        // Check if there are any mappings for this target
+        const hasMappings = this.mappings.some(m => m.targetId === targetId);
+
+        // Check if there is a non-empty simple configuration
+        const hasSimpleConfig = this.targetConfigs[targetId]?.trim().length > 0;
+
+        // Check if there is a non-empty conditional configuration
+        const conditionalConfig = this.conditionalConfigs[targetId];
+        const hasConditionalConfig = conditionalConfig && (
+            conditionalConfig.if.condition.trim().length > 0 ||
+            conditionalConfig.if.then.trim().length > 0 ||
+            conditionalConfig.elseIf.some(block =>
+                block.condition.trim().length > 0 ||
+                block.then.trim().length > 0
+            ) ||
+            conditionalConfig.else?.trim().length > 0
+        );
+
+        // Return true only if there are no mappings but there is a non-empty configuration
+        return !hasMappings && (hasSimpleConfig || hasConditionalConfig);
     }
 
     onConfigChange(event: Event, targetId: string) {
@@ -415,6 +470,13 @@ export class AppComponent implements AfterViewInit {
             !(event.target as HTMLElement).closest('.btn-remove-mapping')) {
             this.selectedTargetId = targetId;
             event.stopPropagation();
+        }
+
+        // Initialize mapping state if not exists
+        if (!this.targetMappingStates[targetId]) {
+            this.targetMappingStates[targetId] = {
+                isConditional: false
+            };
         }
     }
 
@@ -1007,5 +1069,141 @@ export class AppComponent implements AfterViewInit {
             textarea.setSelectionRange(newCursorPos, newCursorPos);
             textarea.focus();
         }
+    }
+
+    onMappingTypeChange() {
+        if (!this.selectedTargetId) return;
+
+        const isConditional = this.isConditionalMapping;
+
+        // Initialize conditional config if switching to conditional
+        if (isConditional) {
+            if (!this.conditionalConfigs[this.selectedTargetId]) {
+                this.conditionalConfigs[this.selectedTargetId] = {
+                    if: { condition: '', then: '' },
+                    elseIf: [],
+                    else: undefined
+                };
+            }
+            // Initialize hasElseBlock based on config
+            this.hasElseBlock = this.conditionalConfigs[this.selectedTargetId].else !== undefined;
+        }
+    }
+
+    getConditionValue(type: string, targetId: string): string {
+        const config = this.conditionalConfigs[targetId];
+        if (!config) return '';
+
+        if (type === 'if') {
+            return config.if.condition;
+        }
+        if (type.startsWith('elseif_')) {
+            const index = parseInt(type.split('_')[1]);
+            return config.elseIf[index]?.condition || '';
+        }
+        return '';
+    }
+
+    getThenValue(type: string, targetId: string): string {
+        const config = this.conditionalConfigs[targetId];
+        if (!config) return '';
+
+        if (type === 'if') {
+            return config.if.then;
+        }
+        if (type.startsWith('elseif_')) {
+            const index = parseInt(type.split('_')[1]);
+            return config.elseIf[index]?.then || '';
+        }
+        if (type === 'else') {
+            return config.else || '';
+        }
+        return '';
+    }
+
+    onConditionChange(event: Event, type: string, targetId: string) {
+        const value = (event.target as HTMLTextAreaElement).value;
+        const config = this.getOrCreateConfig(targetId);
+
+        if (type === 'if') {
+            config.if.condition = value;
+        } else if (type.startsWith('elseif_')) {
+            const index = parseInt(type.split('_')[1]);
+            if (!config.elseIf[index]) {
+                config.elseIf[index] = { condition: '', then: '' };
+            }
+            config.elseIf[index].condition = value;
+        }
+    }
+
+    onThenChange(event: Event, type: string, targetId: string) {
+        const value = (event.target as HTMLTextAreaElement).value;
+        const config = this.getOrCreateConfig(targetId);
+
+        if (type === 'if') {
+            config.if.then = value;
+        } else if (type.startsWith('elseif_')) {
+            const index = parseInt(type.split('_')[1]);
+            if (!config.elseIf[index]) {
+                config.elseIf[index] = { condition: '', then: '' };
+            }
+            config.elseIf[index].then = value;
+        } else if (type === 'else') {
+            config.else = value;
+        }
+    }
+
+    addElseIfBlock() {
+        if (!this.selectedTargetId) return;
+
+        const config = this.getOrCreateConfig(this.selectedTargetId);
+        if (!config.elseIf) {
+            config.elseIf = [];
+        }
+        config.elseIf.push({ condition: '', then: '' });
+        // Force change detection
+        this.conditionalConfigs = { ...this.conditionalConfigs };
+    }
+
+    removeElseIfBlock(index: number) {
+        if (!this.selectedTargetId) return;
+
+        const config = this.conditionalConfigs[this.selectedTargetId];
+        if (config && config.elseIf) {
+            config.elseIf.splice(index, 1);
+            // Force change detection
+            this.conditionalConfigs = { ...this.conditionalConfigs };
+        }
+    }
+
+    addElseBlock() {
+        const config = this.getOrCreateConfig(this.selectedTargetId!);
+        config.else = '';
+        this.hasElseBlock = true;
+    }
+
+    removeElseBlock() {
+        const config = this.conditionalConfigs[this.selectedTargetId!];
+        if (config) {
+            config.else = undefined;
+            this.hasElseBlock = false;
+        }
+    }
+
+    private getOrCreateConfig(targetId: string): ConditionalConfig {
+        if (!this.conditionalConfigs[targetId]) {
+            this.conditionalConfigs[targetId] = {
+                if: { condition: '', then: '' },
+                elseIf: [],
+                else: undefined
+            };
+        }
+        return this.conditionalConfigs[targetId];
+    }
+
+    // Add getter for elseIfBlocks
+    get elseIfBlocks(): ConditionalBlock[] {
+        if (!this.selectedTargetId) return [];
+        return this.conditionalConfigs[this.selectedTargetId]?.elseIf || [];
     }
 }
