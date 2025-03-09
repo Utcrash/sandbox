@@ -74,6 +74,14 @@
                     {{ item.dataPath }}
                     <span *ngIf="item.type === 'Array'" class="array-type-badge">
                         of {{ item.arrayItemType }}
+                        <button class="btn btn-sm btn-link p-0 ms-2" (click)="createArrayItem(item, $event)"
+                            title="Create array item">
+                            <i class="bi bi-plus-circle"></i>
+                        </button>
+                        <button *ngIf="hasArrayItems(item)" class="btn btn-sm btn-link p-0 ms-1"
+                            (click)="removeLastArrayItem(item, $event)" title="Remove last array item">
+                            <i class="bi bi-dash-circle"></i>
+                        </button>
                     </span>
                     <div *ngIf="getMappedTargets(item._id).length > 0" class="d-inline-block ms-2">
                         <span *ngFor="let target of getMappedTargets(item._id)" class="mapping-pill">
@@ -120,8 +128,8 @@
 <!-- Target item template -->
 <ng-template #targetItemTemplate let-item>
     <div class="drag-item" #targetItem [attr.data-id]="item._id" [class.mapped]="getMappedSources(item._id).length > 0"
-        [class.selected]="selectedTargetId === item._id" (click)="activateTarget(item._id, $event)"
-        (dragover)="onDragOver($event); $event.stopPropagation()"
+        [class.selected]="selectedTargetId === item._id" [class.array-item]="item.arrayIndex !== undefined"
+        (click)="activateTarget(item._id, $event)" (dragover)="onDragOver($event); $event.stopPropagation()"
         (drop)="onDrop($event, item); $event.stopPropagation()">
         <div class="p-2 mb-2 bg-light rounded d-flex justify-content-between align-items-center item-header">
             <div class="target-info">
@@ -130,6 +138,14 @@
                     {{ item.dataPath }}
                     <span *ngIf="item.type === 'Array'" class="array-type-badge">
                         of {{ item.arrayItemType }}
+                        <button class="btn btn-sm btn-link p-0 ms-2" (click)="createArrayItem(item, $event)"
+                            title="Create array item">
+                            <i class="bi bi-plus-circle"></i>
+                        </button>
+                        <button *ngIf="hasArrayItems(item)" class="btn btn-sm btn-link p-0 ms-1"
+                            (click)="removeLastArrayItem(item, $event)" title="Remove last array item">
+                            <i class="bi bi-dash-circle"></i>
+                        </button>
                     </span>
                     <div *ngIf="getMappedSources(item._id).length > 0" class="d-inline-block ms-2">
                         <span *ngFor="let source of getMappedSources(item._id)" class="mapping-pill">
@@ -149,8 +165,10 @@
                 </span>
             </div>
             <div>
+                <!-- Show expansion button for arrays and array items with nested structure -->
                 <button *ngIf="(item.type === 'Object' && item.objDef?.length) || 
-                              (item.type === 'Array' && item.arrayItemType === 'Object' && item.arrayItemDef)"
+                              (item.type === 'Array' && item.arrayItemDef?.objDef) ||
+                              (item.arrayIndex !== undefined && item.objDef?.length)"
                     class="btn btn-sm btn-outline-secondary me-1 btn-expand"
                     (click)="toggleObjectExpansion(item._id); $event.stopPropagation()">
                     <i class="bi" [ngClass]="isObjectExpanded(item._id) ? 'bi-chevron-down' : 'bi-chevron-right'"></i>
@@ -163,24 +181,21 @@
             </div>
         </div>
 
-        <!-- Nested properties for Objects -->
-        <div *ngIf="item.type === 'Object' && isObjectExpanded(item._id) && item.objDef?.length"
-            class="nested-properties ms-3 mt-2">
-            <div *ngFor="let nestedItem of item.objDef">
+        <!-- Show array item definition when no indices exist -->
+        <div *ngIf="item.type === 'Array' && !hasArrayItems(item) && item.arrayItemDef?.objDef && isObjectExpanded(item._id)"
+            class="nested-properties ms-3 mt-2 array-item-def">
+            <div class="array-item-header">Array Item Definition:</div>
+            <div *ngFor="let nestedItem of item.arrayItemDef.objDef">
                 <ng-container *ngTemplateOutlet="targetItemTemplate; context: { $implicit: nestedItem }"></ng-container>
             </div>
         </div>
 
-        <!-- Array item definition for Arrays of Objects -->
-        <div *ngIf="item.type === 'Array' && item.arrayItemType === 'Object' && isObjectExpanded(item._id) && item.arrayItemDef"
-            class="nested-properties ms-3 mt-2 array-item-def">
-            <div class="array-item-header">Array Item Definition:</div>
-            <ng-container *ngIf="item.arrayItemDef.objDef">
-                <div *ngFor="let nestedItem of item.arrayItemDef.objDef">
-                    <ng-container
-                        *ngTemplateOutlet="targetItemTemplate; context: { $implicit: nestedItem }"></ng-container>
-                </div>
-            </ng-container>
+        <!-- Show nested properties for objects and array items -->
+        <div *ngIf="(item.type === 'Object' || item.arrayIndex !== undefined) && isObjectExpanded(item._id) && item.objDef?.length"
+            class="nested-properties ms-3 mt-2">
+            <div *ngFor="let nestedItem of item.objDef">
+                <ng-container *ngTemplateOutlet="targetItemTemplate; context: { $implicit: nestedItem }"></ng-container>
+            </div>
         </div>
     </div>
 </ng-template>

@@ -7,8 +7,9 @@ interface FieldDefinition {
     dataPath: string;
     dataPathSegs: string[];
     objDef?: FieldDefinition[]; // For Object types
-    arrayItemType?: 'String' | 'Number' | 'Boolean' | 'Object'; // For Array types
+    arrayItemType?: 'String' | 'Number' | 'Boolean' | 'Object' | 'Array'; // For Array types
     arrayItemDef?: FieldDefinition; // For Array of Objects
+    arrayIndex?: number;  // Add this to track array indices
 }
 
 interface ArrayMapping {
@@ -24,6 +25,7 @@ type ValidationResult = {
     requiresIndex?: boolean;
     requiresParentArrayMapping?: boolean;
     isTypeError?: boolean;
+    requiresConfirmation?: boolean;
 };
 
 declare global {
@@ -269,6 +271,13 @@ export class AppComponent implements AfterViewInit {
         if (!data) return;
 
         const sourceItem = JSON.parse(data);
+
+        // Check if target is an array with child items
+        if (targetItem.type === 'Array' && this.hasArrayItems(targetItem)) {
+            alert('Cannot map to array while it has indexed items. Remove all indices first.');
+            return;
+        }
+
         const validation = this.validateMapping(sourceItem._id, targetItem._id);
 
         if (!validation.isValid) {
@@ -701,15 +710,30 @@ export class AppComponent implements AfterViewInit {
             return { isValid: false, message: 'Invalid source or target' };
         }
 
-        const targetParent = this.findParentField(target);
         const sourceParent = this.findParentField(source);
+        const targetParent = this.findParentField(target);
 
-        // Check array item to array item mapping first
-        if (targetParent?.type === 'Array' && sourceParent?.type === 'Array' &&
-            target.type !== 'Array' && source.type !== 'Array') {
+        // ARRAY VALIDATIONS
 
+        // Case 1: Array -> Array (allowed)
+        if (source.type === 'Array' && target.type === 'Array') {
+            return { isValid: true };
+        }
+
+        // Case 2: Array -> Non-array (require index)
+        if (source.type === 'Array' && target.type !== 'Array') {
+            return {
+                isValid: true,
+                requiresIndex: true,
+                message: 'Mapping from an array requires an index. Would you like to specify an index?'
+            };
+        }
+
+        // Case 3: Array item -> Array item (require parent arrays to be mapped)
+        if (sourceParent?.type === 'Array' && targetParent?.type === 'Array') {
             const parentArraysMapped = this.mappings.some(m =>
-                m.sourceId === sourceParent._id && m.targetId === targetParent._id
+                m.sourceId === sourceParent._id &&
+                m.targetId === targetParent._id
             );
 
             if (!parentArraysMapped) {
@@ -719,86 +743,75 @@ export class AppComponent implements AfterViewInit {
                     isTypeError: true
                 };
             }
-
-            // If parent arrays are mapped, allow the item mapping without index
             return { isValid: true };
         }
 
-        // If target is an array item and source is not from a mapped array parent
-        if (targetParent?.type === 'Array' &&
-            (sourceParent?.type !== 'Array' || !this.mappings.some(m => m.sourceId === sourceParent?._id))) {
+        // Case 4: Array item -> Non-array item (require index)
+        if (sourceParent?.type === 'Array' && targetParent?.type !== 'Array') {
             return {
                 isValid: true,
                 requiresIndex: true,
-                message: 'This mapping requires an array index. Would you like to specify an index or force map?'
+                message: 'Mapping from an array item requires an index. Would you like to specify an index?'
             };
         }
 
-        // Rest of the validation logic...
-        const targetParentMapping = this.findParentObjectMapping(targetId);
-        if (targetParentMapping) {
-            return {
-                isValid: false,
-                message: `Cannot map to this field because its parent object '${targetParentMapping.parentPath}' is already mapped.`,
-                isTypeError: true
-            };
-        }
-
-        // Handle array mappings
-        if (target.type === 'Array' || targetParent?.type === 'Array') {
-            // If both are arrays, allow the mapping
-            if (source.type === 'Array' && target.type === 'Array') {
-                return { isValid: true };
+        // Case 5: Non-array -> Array (require index creation)
+        if (target.type === 'Array') {
+            const hasIndices = this.hasArrayItems(target);
+            if (hasIndices) {
+                return {
+                    isValid: false,
+                    message: 'Cannot map to array while it has indexed items. Remove all indices first.',
+                    isTypeError: true
+                };
             }
-
-            // For any other source type mapping to array/array item, require index
             return {
                 isValid: true,
                 requiresIndex: true,
-                message: 'This mapping requires an array index. Would you like to specify an index or force map?'
+                message: 'Cannot map directly to an array. Would you like to create an index?'
             };
+        }
+
+        // OBJECT VALIDATIONS
+
+        // Case 1: Object item -> Object item (check parent mapping)
+        if (sourceParent?.type === 'Object' && targetParent?.type === 'Object') {
+            const parentObjectsMapped = this.mappings.some(m =>
+                m.sourceId === sourceParent._id &&
+                m.targetId === targetParent._id
+            );
+            if (parentObjectsMapped) {
+                return {
+                    isValid: false,
+                    message: 'Cannot map object properties when parent objects are already mapped.',
+                    isTypeError: true
+                };
+            }
+        }
+
+        // Case 2: Object -> Object (warn about child mappings)
+        if (source.type === 'Object' && target.type === 'Object') {
+            const hasChildMappings = this.hasChildMappings(targetId);
+            if (hasChildMappings) {
+                return {
+                    isValid: true,
+                    message: 'Warning: Mapping objects will remove any existing child property mappings.',
+                    requiresConfirmation: true
+                };
+            }
         }
 
         return { isValid: true };
     }
 
-    // Add helper method to find parent object mappings
-    private findParentObjectMapping(id: string): { parentId: string, parentPath: string } | null {
-        const item = this.findSourceById(id) || this.findTargetById(id);
-        if (!item) return null;
+    private hasChildMappings(objectId: string): boolean {
+        const object = this.findTargetById(objectId);
+        if (!object?.objDef) return false;
 
-        // Get the path segments
-        const pathSegs = item.dataPathSegs;
-
-        // Check each parent level
-        for (let i = pathSegs.length - 2; i >= 0; i--) {
-            const parentPath = pathSegs.slice(0, i + 1).join('.');
-            const parentId = this.findIdByPath(parentPath);
-
-            if (parentId && this.mappings.some(m =>
-                m.sourceId === parentId || m.targetId === parentId
-            )) {
-                return {
-                    parentId,
-                    parentPath
-                };
-            }
-        }
-
-        return null;
-    }
-
-    // Helper method to find ID by path
-    private findIdByPath(path: string): string | null {
-        // First check sources
-        const source = this.sources.find(s => s.dataPath === path);
-        if (source) return source._id;
-
-        // Then check targets
-        const target = this.targets.find(t => t.dataPath === path);
-        if (target) return target._id;
-
-        return null;
+        return object.objDef.some(child =>
+            this.mappings.some(m => m.targetId === child._id) ||
+            this.hasChildMappings(child._id)
+        );
     }
 
     // Add helper method to find parent field
@@ -809,6 +822,18 @@ export class AppComponent implements AfterViewInit {
         const parentId = this.findIdByPath(parentPath);
 
         return parentId ? (this.findSourceById(parentId) || this.findTargetById(parentId)) : null;
+    }
+
+    private findIdByPath(path: string): string | null {
+        // First check sources
+        const source = this.sources.find(s => s.dataPath === path);
+        if (source) return source._id;
+
+        // Then check targets
+        const target = this.targets.find(t => t.dataPath === path);
+        if (target) return target._id;
+
+        return null;
     }
 
     private addMapping(sourceId: string, targetId: string, options?: { index?: number, isForceMapping?: boolean }) {
@@ -837,5 +862,93 @@ export class AppComponent implements AfterViewInit {
         ) as ArrayMapping;
 
         return mapping;
+    }
+
+    // Add method to create array items
+    createArrayItem(arrayField: FieldDefinition, event: Event) {
+        event.stopPropagation();
+
+        // Check if array is mapped
+        const isArrayMapped = this.mappings.some(m => m.targetId === arrayField._id);
+        if (isArrayMapped) {
+            alert('Cannot create array items while array is mapped. Remove the array mapping first.');
+            return;
+        }
+
+        // Find existing indices
+        const existingIndices = this.targets
+            .filter(t => t.dataPath.startsWith(arrayField.dataPath + '['))
+            .map(t => t.arrayIndex || 0);
+
+        const nextIndex = existingIndices.length > 0 ? Math.max(...existingIndices) + 1 : 0;
+
+        // Create new array item with index
+        const newItem: FieldDefinition = {
+            _id: `${arrayField._id}_${nextIndex}`,
+            type: 'Object' as const,
+            dataPath: `${arrayField.dataPath}[${nextIndex}]`,
+            dataPathSegs: [...arrayField.dataPathSegs, `[${nextIndex}]`],
+            arrayIndex: nextIndex,
+            nodeId: arrayField.nodeId,
+            objDef: arrayField.arrayItemDef?.objDef?.map(def => ({
+                _id: `${def._id}_${nextIndex}`,
+                type: def.type,
+                dataPath: `${arrayField.dataPath}[${nextIndex}].${def.dataPathSegs[def.dataPathSegs.length - 1]}`,
+                dataPathSegs: [...arrayField.dataPathSegs, `[${nextIndex}]`, def.dataPathSegs[def.dataPathSegs.length - 1]],
+                arrayItemType: def.arrayItemType,
+                arrayItemDef: def.arrayItemDef,
+                objDef: def.objDef,
+                arrayIndex: nextIndex,
+                nodeId: def.nodeId
+            })) || []
+        };
+
+        // Find the last item with same array base path
+        const lastArrayItemIndex = this.targets.reduce((lastIndex, item, currentIndex) => {
+            if (item.dataPath.startsWith(arrayField.dataPath + '[')) {
+                return currentIndex;
+            }
+            return lastIndex;
+        }, -1);
+
+        // Insert after the last array item, or after the array if no items exist
+        const insertIndex = lastArrayItemIndex === -1 ?
+            this.targets.findIndex(t => t._id === arrayField._id) + 1 :
+            lastArrayItemIndex + 1;
+
+        // Add only the array item container
+        this.targets.splice(insertIndex, 0, newItem);
+    }
+
+    // Add these methods to the component class
+    hasArrayItems(arrayField: FieldDefinition): boolean {
+        return this.targets.some(t =>
+            t.dataPath.startsWith(arrayField.dataPath + '[') &&
+            t.arrayIndex !== undefined
+        );
+    }
+
+    removeLastArrayItem(arrayField: FieldDefinition, event: Event) {
+        event.stopPropagation();
+
+        // Find all items with this array's path
+        const arrayItems = this.targets
+            .filter(t => t.dataPath.startsWith(arrayField.dataPath + '['))
+            .sort((a, b) => (b.arrayIndex || 0) - (a.arrayIndex || 0));
+
+        if (arrayItems.length > 0) {
+            const lastIndex = arrayItems[0].arrayIndex;
+
+            // Remove all items with this index
+            this.targets = this.targets.filter(t =>
+                !t.dataPath.startsWith(arrayField.dataPath + `[${lastIndex}]`)
+            );
+
+            // Remove any mappings for the removed items
+            this.mappings = this.mappings.filter(m => {
+                const mapping = this.findTargetById(m.targetId);
+                return mapping && !mapping.dataPath.startsWith(arrayField.dataPath + `[${lastIndex}]`);
+            });
+        }
     }
 }
