@@ -418,3 +418,17 @@
     }
   }
 }
+
+.function-btn {
+  font-family: "Fira Code", monospace; // Or any monospace font
+  font-size: 0.8rem;
+  padding: 0.25rem 0.5rem;
+  line-height: 1;
+  font-weight: 500;
+
+  &.active {
+    background-color: #0d6efd;
+    color: white;
+    border-color: #0d6efd;
+  }
+}

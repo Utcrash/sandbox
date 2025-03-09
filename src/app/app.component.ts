@@ -6,7 +6,7 @@ interface FieldDefinition {
     nodeId: string;
     dataPath: string;
     dataPathSegs: string[];
-    objDef?: FieldDefinition[]; // For Object types
+    objDef?: any; // For Object types
     arrayItemType?: 'String' | 'Number' | 'Boolean' | 'Object' | 'Array'; // For Array types
     arrayItemDef?: FieldDefinition; // For Array of Objects
     arrayIndex?: number;  // Add this to track array indices
@@ -17,42 +17,38 @@ interface ArrayMapping {
     targetId: string;
     index?: number;
     isForceMapping?: boolean;
+    mappingType?: 'copy' | 'iterate';  // Add this field
 }
 
 type ValidationResult = {
-    isValid: boolean;
+    isValid;
     message?: string;
-    requiresIndex?: boolean;
-    requiresParentArrayMapping?: boolean;
+    requiresIndex?;
+    requiresParentArrayMapping?;
     isTypeError?: boolean;
-    requiresConfirmation?: boolean;
+    requiresConfirmation?;
 };
 
 interface ConditionalBlock {
-    condition: string;
-    then: string;
+    type: 'if' | 'elseif' | 'else';
+    value: string;  // The 'then' part
+    condition?: string;  // Optional because 'else' doesn't have a condition
 }
 
 interface ConditionalConfig {
-    if: ConditionalBlock;
-    elseIf: ConditionalBlock[];
-    else?: string;
+    conditions: ConditionalBlock[];
 }
 
 // Add this interface to store mapping type
 interface TargetMappingState {
-    isConditional: boolean;
+    isConditional;
 }
 
 interface MappingPayload {
     expression: {
         type: 'simple' | 'conditional';
         value: string;
-        conditions?: {
-            if: { condition: string; then: string };
-            elseIf: Array<{ condition: string; then: string }>;
-            else?: string;
-        };
+        conditions?: ConditionalBlock[];
     };
     key: string;
     name: string;
@@ -71,6 +67,7 @@ interface MappingPayload {
         dataPath: string;
         dataPathSegs: string[];
     }>;
+    mappingType?: 'copy' | 'iterate';
 }
 
 declare global {
@@ -86,26 +83,26 @@ declare global {
 })
 export class AppComponent implements AfterViewInit {
     title = 'sandbox';
-    sources: FieldDefinition[] = [];
-    targets: FieldDefinition[] = [];
+    sources = [];
+    targets = [];
     mappings: ArrayMapping[] = [];
     selectedTargetId: string | null = null;
-    targetConfigs: { [key: string]: string } = {};
-    connectionLines: Array<{ x1: number, y1: number, x2: number, y2: number, sourceId: string, targetId: string }> = [];
+    targetConfigs: any = {};
+    connectionLines: Array<any> = [];
     expandedObjects: Set<string> = new Set();
     hasElseBlock = false;
-    conditionalConfigs: { [targetId: string]: ConditionalConfig } = {};
+    conditionalConfigs: any = {};
 
     // Add property to store mapping type per target
-    private targetMappingStates: { [targetId: string]: TargetMappingState } = {};
+    private targetMappingStates: any = {};
 
     // Getter/setter for isConditionalMapping
-    get isConditionalMapping(): boolean {
+    get isConditionalMapping() {
         if (!this.selectedTargetId) return false;
         return this.targetMappingStates[this.selectedTargetId]?.isConditional || false;
     }
 
-    set isConditionalMapping(value: boolean) {
+    set isConditionalMapping(value) {
         if (!this.selectedTargetId) return;
         if (!this.targetMappingStates[this.selectedTargetId]) {
             this.targetMappingStates[this.selectedTargetId] = { isConditional: value };
@@ -118,29 +115,29 @@ export class AppComponent implements AfterViewInit {
     @ViewChildren('targetItem') targetElements!: QueryList<ElementRef>;
     @ViewChild('container') container!: ElementRef;
 
-    get nodeIds(): string[] {
+    get nodeIds() {
         return [...new Set(this.sources.map(item => item.nodeId))];
     }
 
-    getSourcesByNodeId(nodeId: string): FieldDefinition[] {
+    getSourcesByNodeId(nodeId) {
         return this.sources.filter(item => item.nodeId === nodeId);
     }
 
-    getMappedTargets(sourceId: string): FieldDefinition[] {
+    getMappedTargets(sourceId) {
         return this.mappings
             .filter(m => m.sourceId === sourceId)
             .map(m => this.findTargetById(m.targetId))
             .filter(t => t !== undefined) as FieldDefinition[];
     }
 
-    getMappedSources(targetId: string): FieldDefinition[] {
+    getMappedSources(targetId) {
         return this.mappings
             .filter(m => m.targetId === targetId)
             .map(m => this.findSourceById(m.sourceId))
             .filter(s => s !== undefined) as FieldDefinition[];
     }
 
-    getSourceIdsForTarget(targetId: string): string {
+    getSourceIdsForTarget(targetId) {
         const mappedSources = this.getMappedSources(targetId);
         if (!mappedSources.length) return '';
 
@@ -154,7 +151,7 @@ export class AppComponent implements AfterViewInit {
             .join(' ');
     }
 
-    isTargetConfigured(targetId: string): boolean {
+    isTargetConfigured(targetId) {
         // Check if there are any mappings for this target
         const hasMappings = this.mappings.some(m => m.targetId === targetId);
 
@@ -164,20 +161,17 @@ export class AppComponent implements AfterViewInit {
         // Check if there is a non-empty conditional configuration
         const conditionalConfig = this.conditionalConfigs[targetId];
         const hasConditionalConfig = conditionalConfig && (
-            conditionalConfig.if.condition.trim().length > 0 ||
-            conditionalConfig.if.then.trim().length > 0 ||
-            conditionalConfig.elseIf.some(block =>
-                block.condition.trim().length > 0 ||
-                block.then.trim().length > 0
-            ) ||
-            conditionalConfig.else?.trim().length > 0
+            conditionalConfig.conditions.some(block =>
+                block.condition?.trim().length > 0 ||
+                block.value.trim().length > 0
+            )
         );
 
         // Return true only if there are no mappings but there is a non-empty configuration
         return !hasMappings && (hasSimpleConfig || hasConditionalConfig);
     }
 
-    onConfigChange(event: Event, targetId: string) {
+    onConfigChange(event: Event, targetId) {
         const textarea = event.target as HTMLTextAreaElement;
         const newValue = textarea.value.trim();
 
@@ -195,11 +189,11 @@ export class AppComponent implements AfterViewInit {
         this.targetConfigs[targetId] = newValue;
     }
 
-    toggleTarget(targetId: string) {
+    toggleTarget(targetId) {
         this.selectedTargetId = this.selectedTargetId === targetId ? null : targetId;
     }
 
-    toggleObjectExpansion(id: string) {
+    toggleObjectExpansion(id) {
         if (this.expandedObjects.has(id)) {
             this.expandedObjects.delete(id);
         } else {
@@ -209,7 +203,7 @@ export class AppComponent implements AfterViewInit {
         setTimeout(() => this.drawConnectionLines(), 100);
     }
 
-    isObjectExpanded(id: string): boolean {
+    isObjectExpanded(id) {
         return this.expandedObjects.has(id);
     }
 
@@ -355,6 +349,19 @@ export class AppComponent implements AfterViewInit {
 
         const sourceItem = JSON.parse(data);
 
+        // Check if both source and target are arrays
+        if (sourceItem.type === 'Array' && targetItem.type === 'Array') {
+            const mappingType = confirm(
+                'How do you want to map the arrays?\n\n' +
+                'OK - Copy the entire array\n' +
+                'Cancel - Iterate over array items'
+            ) ? 'copy' : 'iterate';
+
+            // Add mapping with type
+            this.addMapping(sourceItem._id, targetItem._id, { mappingType });
+            return;
+        }
+
         // Check if target is an array with child items
         if (targetItem.type === 'Array' && this.hasArrayItems(targetItem)) {
             alert('Cannot map to array while it has indexed items. Remove all indices first.');
@@ -415,7 +422,7 @@ export class AppComponent implements AfterViewInit {
         }
     }
 
-    getMappedSourcesPaths(targetId: string): string {
+    getMappedSourcesPaths(targetId) {
         const sources = this.getMappedSources(targetId);
         if (sources.length === 0) return '';
 
@@ -425,7 +432,7 @@ export class AppComponent implements AfterViewInit {
         return `${sources[0].dataPath}, ${sources[1].dataPath} +${sources.length - 2} more`;
     }
 
-    getMappedSourcesTooltip(targetId: string): string {
+    getMappedSourcesTooltip(targetId) {
         return this.getMappedSources(targetId)
             .map(s => s.dataPath)
             .join('\n');
@@ -492,7 +499,7 @@ export class AppComponent implements AfterViewInit {
         return container ? container.clientHeight : 800;
     }
 
-    activateTarget(targetId: string, event: MouseEvent) {
+    activateTarget(targetId, event: MouseEvent) {
         console.log('activateTarget called for:', targetId);
         // Only activate if we're not clicking on the expand/collapse button
         if (!(event.target as HTMLElement).closest('.btn-expand') &&
@@ -510,7 +517,7 @@ export class AppComponent implements AfterViewInit {
     }
 
     // Check if a source is a parent of another source
-    isParentOf(parentId: string, childId: string): boolean {
+    isParentOf(parentId, childId) {
         const parent = this.findSourceById(parentId);
         if (!parent || parent.type !== 'Object' || !parent.objDef) {
             return false;
@@ -528,12 +535,12 @@ export class AppComponent implements AfterViewInit {
     }
 
     // Check if a source is a child of another source
-    isChildOf(childId: string, parentId: string): boolean {
+    isChildOf(childId, parentId) {
         return this.isParentOf(parentId, childId);
     }
 
     // Find a source by ID (including nested sources)
-    findSourceById(id: string): FieldDefinition | undefined {
+    findSourceById(id): FieldDefinition | undefined {
         // Check top-level sources
         const source = this.sources.find(s => s._id === id);
         if (source) {
@@ -568,7 +575,7 @@ export class AppComponent implements AfterViewInit {
     }
 
     // Helper to find a nested source by ID
-    findNestedSourceById(sources: FieldDefinition[], id: string): FieldDefinition | undefined {
+    findNestedSourceById(sources, id): FieldDefinition | undefined {
         for (const source of sources) {
             if (source._id === id) {
                 return source;
@@ -600,7 +607,7 @@ export class AppComponent implements AfterViewInit {
     }
 
     // Add a method to find a target by ID (including nested targets)
-    findTargetById(id: string): FieldDefinition | undefined {
+    findTargetById(id): FieldDefinition | undefined {
         // Check top-level targets
         const target = this.targets.find(t => t._id === id);
         if (target) {
@@ -635,7 +642,7 @@ export class AppComponent implements AfterViewInit {
     }
 
     // Helper to find a nested target by ID
-    findNestedTargetById(targets: FieldDefinition[], id: string): FieldDefinition | undefined {
+    findNestedTargetById(targets, id): FieldDefinition | undefined {
         for (const target of targets) {
             if (target._id === id) {
                 return target;
@@ -667,8 +674,8 @@ export class AppComponent implements AfterViewInit {
     }
 
     // Check if mapping would create a conflict
-    wouldCreateMappingConflict(sourceId: string, targetId: string): { hasConflict: boolean, conflictingMappings: Array<{ sourceId: string, targetId: string }>, message: string } {
-        const conflicts: Array<{ sourceId: string, targetId: string }> = [];
+    wouldCreateMappingConflict(sourceId, targetId): { hasConflict, conflictingMappings: Array<{ sourceId, targetId }>, message } {
+        const conflicts: Array<{ sourceId, targetId }> = [];
         let message = '';
 
         // Get the source and target
@@ -708,7 +715,7 @@ export class AppComponent implements AfterViewInit {
             const childTargetIds = this.findAllNestedTargetIds(target.objDef);
 
             // Check if any child target is already mapped from any source
-            const childTargetMappings: Array<{ sourceId: string, targetId: string }> = [];
+            const childTargetMappings: Array<{ sourceId, targetId }> = [];
             childTargetIds.forEach(childTargetId => {
                 const mappings = this.mappings.filter(m => m.targetId === childTargetId);
                 childTargetMappings.push(...mappings);
@@ -728,8 +735,8 @@ export class AppComponent implements AfterViewInit {
     }
 
     // Get all nested source IDs
-    findAllNestedSourceIds(sources: FieldDefinition[]): string[] {
-        const ids: string[] = [];
+    findAllNestedSourceIds(sources) {
+        const ids = [];
 
         sources.forEach(source => {
             ids.push(source._id);
@@ -751,8 +758,8 @@ export class AppComponent implements AfterViewInit {
     }
 
     // Get all nested target IDs
-    findAllNestedTargetIds(targets: FieldDefinition[]): string[] {
-        const ids: string[] = [];
+    findAllNestedTargetIds(targets) {
+        const ids = [];
 
         targets.forEach(target => {
             ids.push(target._id);
@@ -773,7 +780,7 @@ export class AppComponent implements AfterViewInit {
         return ids;
     }
 
-    removeMapping(sourceId: string, targetId: string, event: Event | null) {
+    removeMapping(sourceId, targetId, event: Event | null) {
         if (event) {
             event.stopPropagation();
         }
@@ -808,7 +815,7 @@ export class AppComponent implements AfterViewInit {
         console.log('Current mappings:', this.mappings);
     }
 
-    validateMapping(sourceId: string, targetId: string): ValidationResult {
+    validateMapping(sourceId, targetId): ValidationResult {
         const source = this.findSourceById(sourceId);
         const target = this.findTargetById(targetId);
 
@@ -910,7 +917,7 @@ export class AppComponent implements AfterViewInit {
         return { isValid: true };
     }
 
-    private hasChildMappings(objectId: string): boolean {
+    private hasChildMappings(objectId) {
         const object = this.findTargetById(objectId);
         if (!object?.objDef) return false;
 
@@ -930,7 +937,7 @@ export class AppComponent implements AfterViewInit {
         return parentId ? (this.findSourceById(parentId) || this.findTargetById(parentId)) : null;
     }
 
-    private findIdByPath(path: string): string | null {
+    private findIdByPath(path) {
         // First check sources
         const source = this.sources.find(s => s.dataPath === path);
         if (source) return source._id;
@@ -942,19 +949,20 @@ export class AppComponent implements AfterViewInit {
         return null;
     }
 
-    private addMapping(sourceId: string, targetId: string, options?: { index?: number, isForceMapping?: boolean }) {
+    private addMapping(sourceId, targetId, options?: { index?: number, isForceMapping?, mappingType?: 'copy' | 'iterate' }) {
         this.mappings.push({
             sourceId,
             targetId,
             ...(options?.index !== undefined ? { index: options.index } : {}),
-            ...(options?.isForceMapping ? { isForceMapping: true } : {})
+            ...(options?.isForceMapping ? { isForceMapping: true } : {}),
+            ...(options?.mappingType ? { mappingType: options.mappingType } : {})
         });
 
         this.selectedTargetId = targetId;
         setTimeout(() => this.drawConnectionLines(), 100);
     }
 
-    getMappingDisplay(mapping: ArrayMapping): string {
+    getMappingDisplay(mapping: ArrayMapping) {
         if (mapping.isForceMapping) {
             return '(forced)';
         }
@@ -962,7 +970,7 @@ export class AppComponent implements AfterViewInit {
     }
 
     // Add this method to get the mapping details for a source-target pair
-    getMappingForSource(sourceId: string, targetId: string): ArrayMapping | undefined {
+    getMappingForSource(sourceId, targetId): ArrayMapping | undefined {
         const mapping = this.mappings.find(m =>
             m.sourceId === sourceId && m.targetId === targetId
         ) as ArrayMapping;
@@ -1030,7 +1038,7 @@ export class AppComponent implements AfterViewInit {
     }
 
     // Add these methods to the component class
-    hasArrayItems(arrayField: FieldDefinition): boolean {
+    hasArrayItems(arrayField: FieldDefinition) {
         return this.targets.some(t =>
             t.dataPath.startsWith(arrayField.dataPath + '[') &&
             t.arrayIndex !== undefined
@@ -1112,76 +1120,81 @@ export class AppComponent implements AfterViewInit {
         if (isConditional) {
             if (!this.conditionalConfigs[this.selectedTargetId]) {
                 this.conditionalConfigs[this.selectedTargetId] = {
-                    if: { condition: '', then: '' },
-                    elseIf: [],
-                    else: undefined
+                    conditions: []
                 };
             }
             // Initialize hasElseBlock based on config
-            this.hasElseBlock = this.conditionalConfigs[this.selectedTargetId].else !== undefined;
+            this.hasElseBlock = this.conditionalConfigs[this.selectedTargetId].conditions.length > 0;
         }
     }
 
-    getConditionValue(type: string, targetId: string): string {
+    getConditionValue(type, targetId, index?: number) {
         const config = this.conditionalConfigs[targetId];
         if (!config) return '';
 
-        if (type === 'if') {
-            return config.if.condition;
+        if (type === 'elseif') {
+            const elseifBlocks = config.conditions.filter(c => c.type === 'elseif');
+            return elseifBlocks[index || 0]?.condition || '';
         }
-        if (type.startsWith('elseif_')) {
-            const index = parseInt(type.split('_')[1]);
-            return config.elseIf[index]?.condition || '';
-        }
-        return '';
+        const block = config.conditions.find(c => c.type === type);
+        return block?.condition || '';
     }
 
-    getThenValue(type: string, targetId: string): string {
+    getThenValue(type, targetId, index?: number) {
         const config = this.conditionalConfigs[targetId];
         if (!config) return '';
 
-        if (type === 'if') {
-            return config.if.then;
+        if (type === 'elseif') {
+            const elseifBlocks = config.conditions.filter(c => c.type === 'elseif');
+            return elseifBlocks[index || 0]?.value || '';
         }
-        if (type.startsWith('elseif_')) {
-            const index = parseInt(type.split('_')[1]);
-            return config.elseIf[index]?.then || '';
-        }
-        if (type === 'else') {
-            return config.else || '';
-        }
-        return '';
+        const block = config.conditions.find(c => c.type === type);
+        return block?.value || '';
     }
 
-    onConditionChange(event: Event, type: string, targetId: string) {
-        const value = (event.target as HTMLTextAreaElement).value;
+    onConditionChange(event: Event, type, targetId: string, index?: number) {
+        const newCondition = (event.target as HTMLTextAreaElement).value;
         const config = this.getOrCreateConfig(targetId);
 
-        if (type === 'if') {
-            config.if.condition = value;
-        } else if (type.startsWith('elseif_')) {
-            const index = parseInt(type.split('_')[1]);
-            if (!config.elseIf[index]) {
-                config.elseIf[index] = { condition: '', then: '' };
+        if (type === 'elseif' && typeof index === 'number') {
+            const elseifBlocks = config.conditions.filter(c => c.type === 'elseif');
+            if (elseifBlocks[index]) {
+                elseifBlocks[index].condition = newCondition;
             }
-            config.elseIf[index].condition = value;
+            return;
+        }
+        const block = config.conditions.find(c => c.type === type);
+        if (block) {
+            block.condition = newCondition;
+        } else {
+            config.conditions.push({
+                type,
+                condition: type !== 'else' ? newCondition : undefined,
+                value: ''  // Initialize with empty value
+            });
         }
     }
 
-    onThenChange(event: Event, type: string, targetId: string) {
-        const value = (event.target as HTMLTextAreaElement).value;
+    onThenChange(event: Event, type, targetId: string, index?: number) {
+        const newValue = (event.target as HTMLTextAreaElement).value;
         const config = this.getOrCreateConfig(targetId);
 
-        if (type === 'if') {
-            config.if.then = value;
-        } else if (type.startsWith('elseif_')) {
-            const index = parseInt(type.split('_')[1]);
-            if (!config.elseIf[index]) {
-                config.elseIf[index] = { condition: '', then: '' };
+        if (type === 'elseif' && typeof index === 'number') {
+            const elseifBlocks = config.conditions.filter(c => c.type === 'elseif');
+            if (elseifBlocks[index]) {
+                elseifBlocks[index].value = newValue;
             }
-            config.elseIf[index].then = value;
-        } else if (type === 'else') {
-            config.else = value;
+            return;
+        }
+        const block = config.conditions.find(c => c.type === type);
+        if (block) {
+            block.value = newValue;
+        } else {
+            config.conditions.push({
+                type,
+                value: newValue,
+                condition: type !== 'else' ? '' : undefined  // Initialize with empty condition
+            });
         }
     }
 
@@ -1189,10 +1202,10 @@ export class AppComponent implements AfterViewInit {
         if (!this.selectedTargetId) return;
 
         const config = this.getOrCreateConfig(this.selectedTargetId);
-        if (!config.elseIf) {
-            config.elseIf = [];
-        }
-        config.elseIf.push({ condition: '', then: '' });
+        config.conditions.push({
+            type: 'elseif',
+            value: ''
+        });
         // Force change detection
         this.conditionalConfigs = { ...this.conditionalConfigs };
     }
@@ -1201,8 +1214,8 @@ export class AppComponent implements AfterViewInit {
         if (!this.selectedTargetId) return;
 
         const config = this.conditionalConfigs[this.selectedTargetId];
-        if (config && config.elseIf) {
-            config.elseIf.splice(index, 1);
+        if (config && config.conditions) {
+            config.conditions.splice(index, 1);
             // Force change detection
             this.conditionalConfigs = { ...this.conditionalConfigs };
         }
@@ -1210,24 +1223,25 @@ export class AppComponent implements AfterViewInit {
 
     addElseBlock() {
         const config = this.getOrCreateConfig(this.selectedTargetId!);
-        config.else = '';
+        config.conditions.push({
+            type: 'else',
+            value: ''
+        });
         this.hasElseBlock = true;
     }
 
     removeElseBlock() {
         const config = this.conditionalConfigs[this.selectedTargetId!];
         if (config) {
-            config.else = undefined;
+            config.conditions = [];
             this.hasElseBlock = false;
         }
     }
 
-    private getOrCreateConfig(targetId: string): ConditionalConfig {
+    private getOrCreateConfig(targetId): ConditionalConfig {
         if (!this.conditionalConfigs[targetId]) {
             this.conditionalConfigs[targetId] = {
-                if: { condition: '', then: '' },
-                elseIf: [],
-                else: undefined
+                conditions: []
             };
         }
         return this.conditionalConfigs[targetId];
@@ -1236,12 +1250,15 @@ export class AppComponent implements AfterViewInit {
     // Add getter for elseIfBlocks
     get elseIfBlocks(): ConditionalBlock[] {
         if (!this.selectedTargetId) return [];
-        return this.conditionalConfigs[this.selectedTargetId]?.elseIf || [];
+        return (this.conditionalConfigs[this.selectedTargetId]?.conditions || [])
+            .filter(block => block.type === 'elseif');
     }
 
     onDone() {
-        const payload = this.generatePayload();
-        console.log('Mapping Payload:', payload);
+        setTimeout(() => {
+            const payload = this.generatePayload();
+            console.log('Mapping Payload:', payload);
+        }, 0);
     }
 
     private generatePayload(): MappingPayload[] {
@@ -1294,31 +1311,6 @@ export class AppComponent implements AfterViewInit {
     private createMappingPayload(target: FieldDefinition): MappingPayload {
         const isConditional = this.targetMappingStates[target._id]?.isConditional || false;
 
-        // Get children first to check if we have valid nested mappings
-        let children: MappingPayload[] = [];
-
-        if (target.type === 'Object' && target.objDef) {
-            children = target.objDef
-                .map(child => this.createMappingPayload(child))
-                .filter(payload => this.isPayloadValid(payload));
-        }
-
-        if (target.type === 'Array') {
-            // Handle array items
-            const arrayItems = this.getArrayItems(target);
-            if (arrayItems.length > 0) {
-                // If array has items, include them as children
-                children = arrayItems
-                    .map(item => this.createMappingPayload(item))
-                    .filter(payload => this.isPayloadValid(payload));
-            } else if (target.arrayItemDef?.objDef) {
-                // If no items but has item definition, process the definition
-                children = target.arrayItemDef.objDef
-                    .map(child => this.createMappingPayload(child))
-                    .filter(payload => this.isPayloadValid(payload));
-            }
-        }
-
         // Get mapped sources
         const sources = this.getMappedSources(target._id).map(source => ({
             _id: source._id,
@@ -1327,18 +1319,43 @@ export class AppComponent implements AfterViewInit {
             dataPathSegs: source.dataPathSegs
         }));
 
+        // Create conditions array for conditional mapping
+        let conditions: ConditionalBlock[] | undefined;
+        if (isConditional && this.conditionalConfigs[target._id]) {
+            // First get the 'if' block
+            const ifBlock = this.conditionalConfigs[target._id].conditions.find(c => c.type === 'if');
+            // Then get all 'elseif' blocks
+            const elseifBlocks = this.conditionalConfigs[target._id].conditions.filter(c => c.type === 'elseif');
+            // Finally get the 'else' block
+            const elseBlock = this.conditionalConfigs[target._id].conditions.find(c => c.type === 'else');
+
+            conditions = [
+                // If block
+                ifBlock ? {
+                    type: 'if' as const,
+                    value: ifBlock.value || '',
+                    condition: ifBlock.condition || ''
+                } : null,
+                // Elseif blocks
+                ...elseifBlocks.map(block => ({
+                    type: 'elseif' as const,
+                    value: block.value || '',
+                    condition: block.condition || ''
+                })),
+                // Else block
+                elseBlock ? {
+                    type: 'else' as const,
+                    value: elseBlock.value || '',
+                    condition: undefined
+                } : null
+            ].filter(block => block !== null);
+        }
+
         const payload: MappingPayload = {
             expression: {
                 type: isConditional ? 'conditional' : 'simple',
                 value: isConditional ? '' : (this.targetConfigs[target._id] || ''),
-                conditions: isConditional ? {
-                    if: {
-                        condition: this.conditionalConfigs[target._id]?.if?.condition || '',
-                        then: this.conditionalConfigs[target._id]?.if?.then || ''
-                    },
-                    elseIf: this.conditionalConfigs[target._id]?.elseIf || [],
-                    else: this.conditionalConfigs[target._id]?.else
-                } : undefined
+                conditions: isConditional ? conditions : undefined
             },
             key: target.dataPathSegs[target.dataPathSegs.length - 1],
             name: target.dataPath,
@@ -1347,18 +1364,17 @@ export class AppComponent implements AfterViewInit {
                 type: target.type,
                 dataPath: target.dataPath,
                 dataPathSegs: target.dataPathSegs,
-                // Add array specific information
                 arrayIndex: target.arrayIndex,
                 arrayItemType: target.type === 'Array' ? target.arrayItemType : undefined
             },
-            children,
+            children: [],
             sources
         };
 
         return payload;
     }
 
-    private isPayloadValid(payload: MappingPayload): boolean {
+    private isPayloadValid(payload: MappingPayload) {
         // Check if there are any sources mapped
         const hasSources = payload.sources.length > 0;
 
@@ -1368,18 +1384,13 @@ export class AppComponent implements AfterViewInit {
         // Check if there is any configuration
         const hasConfig = payload.expression.type === 'simple' ?
             !!payload.expression.value.trim() :
-            !!(payload.expression.conditions?.if.condition.trim() ||
-                payload.expression.conditions?.if.then.trim() ||
-                payload.expression.conditions?.elseIf.some(block =>
-                    block.condition.trim() || block.then.trim()
-                ) ||
-                payload.expression.conditions?.else?.trim());
+            !!(payload.expression.conditions?.some(c => c.condition?.trim() || c.value.trim()));
 
         // Valid if it has sources, children, or configuration
         return hasSources || hasChildren || hasConfig;
     }
 
-    private getArrayItems(arrayField: FieldDefinition): FieldDefinition[] {
+    private getArrayItems(arrayField: FieldDefinition) {
         // Get all array items that belong to this array
         return this.targets.filter(t =>
             t.arrayIndex !== undefined &&
@@ -1412,7 +1423,7 @@ export class AppComponent implements AfterViewInit {
         return undefined;
     }
 
-    private hasMapping(targetId: string): boolean {
+    private hasMapping(targetId) {
         return this.mappings.some(m => m.targetId === targetId) ||
             !!this.targetConfigs[targetId] ||
             !!this.conditionalConfigs[targetId];
@@ -1452,14 +1463,12 @@ export class AppComponent implements AfterViewInit {
             // Handle conditional mapping
             if (item.expression.type === 'conditional' && item.expression.conditions) {
                 this.conditionalConfigs[item.target._id] = {
-                    if: item.expression.conditions.if,
-                    elseIf: item.expression.conditions.elseIf || [],
-                    else: item.expression.conditions.else
+                    conditions: item.expression.conditions
                 };
 
                 // Set hasElseBlock if else condition exists
                 if (item.target._id === this.selectedTargetId) {
-                    this.hasElseBlock = item.expression.conditions.else !== undefined;
+                    this.hasElseBlock = item.expression.conditions.some(c => c.type === 'else');
                 }
             }
 
