@@ -44,6 +44,35 @@ interface TargetMappingState {
     isConditional: boolean;
 }
 
+interface MappingPayload {
+    expression: {
+        type: 'simple' | 'conditional';
+        value: string;
+        conditions?: {
+            if: { condition: string; then: string };
+            elseIf: Array<{ condition: string; then: string }>;
+            else?: string;
+        };
+    };
+    key: string;
+    name: string;
+    target: {
+        _id: string;
+        type: string;
+        dataPath: string;
+        dataPathSegs: string[];
+        arrayIndex?: number;
+        arrayItemType?: string;
+    };
+    children: MappingPayload[];
+    sources: Array<{
+        _id: string;
+        type: string;
+        dataPath: string;
+        dataPathSegs: string[];
+    }>;
+}
+
 declare global {
     interface Window {
         angularComponentRef: AppComponent;
@@ -962,22 +991,25 @@ export class AppComponent implements AfterViewInit {
         // Create new array item with index
         const newItem: FieldDefinition = {
             _id: `${arrayField._id}_${nextIndex}`,
-            type: 'Object' as const,
+            type: arrayField.arrayItemType as any, // Use the array's item type
             dataPath: `${arrayField.dataPath}[${nextIndex}]`,
             dataPathSegs: [...arrayField.dataPathSegs, `[${nextIndex}]`],
             arrayIndex: nextIndex,
             nodeId: arrayField.nodeId,
-            objDef: arrayField.arrayItemDef?.objDef?.map(def => ({
-                _id: `${def._id}_${nextIndex}`,
-                type: def.type,
-                dataPath: `${arrayField.dataPath}[${nextIndex}].${def.dataPathSegs[def.dataPathSegs.length - 1]}`,
-                dataPathSegs: [...arrayField.dataPathSegs, `[${nextIndex}]`, def.dataPathSegs[def.dataPathSegs.length - 1]],
-                arrayItemType: def.arrayItemType,
-                arrayItemDef: def.arrayItemDef,
-                objDef: def.objDef,
-                arrayIndex: nextIndex,
-                nodeId: def.nodeId
-            })) || []
+            // Only add objDef if it's an Object type
+            ...(arrayField.arrayItemType === 'Object' ? {
+                objDef: arrayField.arrayItemDef?.objDef?.map(def => ({
+                    _id: `${def._id}_${nextIndex}`,
+                    type: def.type,
+                    dataPath: `${arrayField.dataPath}[${nextIndex}].${def.dataPathSegs[def.dataPathSegs.length - 1]}`,
+                    dataPathSegs: [...arrayField.dataPathSegs, `[${nextIndex}]`, def.dataPathSegs[def.dataPathSegs.length - 1]],
+                    arrayItemType: def.arrayItemType,
+                    arrayItemDef: def.arrayItemDef,
+                    objDef: def.objDef,
+                    arrayIndex: nextIndex,
+                    nodeId: def.nodeId
+                })) || []
+            } : {})
         };
 
         // Find the last item with same array base path
@@ -1205,5 +1237,184 @@ export class AppComponent implements AfterViewInit {
     get elseIfBlocks(): ConditionalBlock[] {
         if (!this.selectedTargetId) return [];
         return this.conditionalConfigs[this.selectedTargetId]?.elseIf || [];
+    }
+
+    onDone() {
+        const payload = this.generatePayload();
+        console.log('Mapping Payload:', payload);
+    }
+
+    private generatePayload(): MappingPayload[] {
+        // Track which targets have been included as children
+        const includedAsChild = new Set<string>();
+
+        // Function to mark a target and its children as included
+        const markAsIncluded = (target: FieldDefinition) => {
+            if (target.objDef) {
+                target.objDef.forEach(child => {
+                    includedAsChild.add(child._id);
+                    markAsIncluded(child);
+                });
+            }
+            if (target.type === 'Array') {
+                const arrayItems = this.getArrayItems(target);
+                arrayItems.forEach(item => {
+                    includedAsChild.add(item._id);
+                    markAsIncluded(item);
+                });
+            }
+        };
+
+        // Get root level targets and mark their children
+        const rootTargets = this.targets.filter(target => {
+            // If it's not an array item, check if it has no parent
+            if (target.arrayIndex === undefined) {
+                const isRoot = !this.findParentField(target);
+                if (isRoot) {
+                    markAsIncluded(target);
+                }
+                return isRoot;
+            }
+            // If it's an array item, check if its parent array is not in the mapping
+            const parentArray = this.findParentArray(target);
+            const isRoot = !parentArray || !this.hasMapping(parentArray._id);
+            if (isRoot) {
+                markAsIncluded(target);
+            }
+            return isRoot;
+        });
+
+        // Generate payload only for root targets that haven't been included as children
+        return rootTargets
+            .filter(target => !includedAsChild.has(target._id))
+            .map(target => this.createMappingPayload(target))
+            .filter(payload => this.isPayloadValid(payload));
+    }
+
+    private createMappingPayload(target: FieldDefinition): MappingPayload {
+        const isConditional = this.targetMappingStates[target._id]?.isConditional || false;
+
+        // Get children first to check if we have valid nested mappings
+        let children: MappingPayload[] = [];
+
+        if (target.type === 'Object' && target.objDef) {
+            children = target.objDef
+                .map(child => this.createMappingPayload(child))
+                .filter(payload => this.isPayloadValid(payload));
+        }
+
+        if (target.type === 'Array') {
+            // Handle array items
+            const arrayItems = this.getArrayItems(target);
+            if (arrayItems.length > 0) {
+                // If array has items, include them as children
+                children = arrayItems
+                    .map(item => this.createMappingPayload(item))
+                    .filter(payload => this.isPayloadValid(payload));
+            } else if (target.arrayItemDef?.objDef) {
+                // If no items but has item definition, process the definition
+                children = target.arrayItemDef.objDef
+                    .map(child => this.createMappingPayload(child))
+                    .filter(payload => this.isPayloadValid(payload));
+            }
+        }
+
+        // Get mapped sources
+        const sources = this.getMappedSources(target._id).map(source => ({
+            _id: source._id,
+            type: source.type,
+            dataPath: source.dataPath,
+            dataPathSegs: source.dataPathSegs
+        }));
+
+        const payload: MappingPayload = {
+            expression: {
+                type: isConditional ? 'conditional' : 'simple',
+                value: isConditional ? '' : (this.targetConfigs[target._id] || ''),
+                conditions: isConditional ? {
+                    if: {
+                        condition: this.conditionalConfigs[target._id]?.if?.condition || '',
+                        then: this.conditionalConfigs[target._id]?.if?.then || ''
+                    },
+                    elseIf: this.conditionalConfigs[target._id]?.elseIf || [],
+                    else: this.conditionalConfigs[target._id]?.else
+                } : undefined
+            },
+            key: target.dataPathSegs[target.dataPathSegs.length - 1],
+            name: target.dataPath,
+            target: {
+                _id: target._id,
+                type: target.type,
+                dataPath: target.dataPath,
+                dataPathSegs: target.dataPathSegs,
+                // Add array specific information
+                arrayIndex: target.arrayIndex,
+                arrayItemType: target.type === 'Array' ? target.arrayItemType : undefined
+            },
+            children,
+            sources
+        };
+
+        return payload;
+    }
+
+    private isPayloadValid(payload: MappingPayload): boolean {
+        // Check if there are any sources mapped
+        const hasSources = payload.sources.length > 0;
+
+        // Check if there are any valid children
+        const hasChildren = payload.children.length > 0;
+
+        // Check if there is any configuration
+        const hasConfig = payload.expression.type === 'simple' ?
+            !!payload.expression.value.trim() :
+            !!(payload.expression.conditions?.if.condition.trim() ||
+                payload.expression.conditions?.if.then.trim() ||
+                payload.expression.conditions?.elseIf.some(block =>
+                    block.condition.trim() || block.then.trim()
+                ) ||
+                payload.expression.conditions?.else?.trim());
+
+        // Valid if it has sources, children, or configuration
+        return hasSources || hasChildren || hasConfig;
+    }
+
+    private getArrayItems(arrayField: FieldDefinition): FieldDefinition[] {
+        // Get all array items that belong to this array
+        return this.targets.filter(t =>
+            t.arrayIndex !== undefined &&
+            t.dataPath.startsWith(arrayField.dataPath + '[') &&
+            // Ensure we only get direct children, not nested array items
+            t.dataPath.match(/\[/g)?.length === 1
+        );
+    }
+
+    private createArrayItemWithDefinition(arrayField: FieldDefinition, itemDef: FieldDefinition, index: number): FieldDefinition {
+        return {
+            _id: `${arrayField._id}_${index}`,
+            type: itemDef.type,
+            dataPath: `${arrayField.dataPath}[${index}]`,
+            dataPathSegs: [...arrayField.dataPathSegs, index.toString()],
+            arrayIndex: index,
+            nodeId: arrayField.nodeId,
+            objDef: itemDef.objDef,
+            arrayItemType: itemDef.arrayItemType,
+            arrayItemDef: itemDef.arrayItemDef
+        };
+    }
+
+    private findParentArray(field: FieldDefinition): FieldDefinition | undefined {
+        // For array items, find the parent array
+        if (field.arrayIndex !== undefined) {
+            const parentPath = field.dataPath.substring(0, field.dataPath.lastIndexOf('['));
+            return this.targets.find(t => t.dataPath === parentPath);
+        }
+        return undefined;
+    }
+
+    private hasMapping(targetId: string): boolean {
+        return this.mappings.some(m => m.targetId === targetId) ||
+            !!this.targetConfigs[targetId] ||
+            !!this.conditionalConfigs[targetId];
     }
 }

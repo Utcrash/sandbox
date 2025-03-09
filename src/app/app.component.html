@@ -151,6 +151,13 @@
     </div>
 </div>
 
+<!-- Add this before closing the container-fluid div -->
+<div class="position-fixed bottom-0 end-0 p-3">
+    <button class="btn btn-primary" (click)="onDone()">
+        <i class="bi bi-check2-circle me-2"></i>Done
+    </button>
+</div>
+
 <!-- Source item template -->
 <ng-template #sourceItemTemplate let-item>
     <div class="drag-item" #sourceItem [attr.data-id]="item._id" [class.mapped]="getMappedTargets(item._id).length > 0"
