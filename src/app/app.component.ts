@@ -1457,8 +1457,11 @@ export class AppComponent implements AfterViewInit {
         // Check if this is using a parent iterator and has a value
         const usesIterator = !!payload.iterator && !!payload.expression.value.trim();
 
+        // Check if any children have valid mappings
+        const hasValidChildren = payload.children.length > 0;
+
         // Valid if it has sources, valid children, configuration, iterators, or uses parent iterator
-        return hasSources || hasConfig || hasIterators || usesIterator;
+        return hasSources || hasConfig || hasIterators || usesIterator || hasValidChildren;
     }
 
     private createMappingPayload(target: FieldDefinition): MappingPayload {
@@ -1480,11 +1483,15 @@ export class AppComponent implements AfterViewInit {
             this.findParentArrayIterator(target._id) : null;
 
         // Get regular children and array item children
-        const regularChildren = target.objDef?.map(child => this.createMappingPayload(child)) || [];
+        const regularChildren = target.objDef?.map(child => {
+            const childPayload = this.createMappingPayload(child);
+            // Only include child payload if it has mappings or configuration
+            return this.isPayloadValid(childPayload) ? childPayload : null;
+        }).filter(Boolean) || [];
+
         const arrayItemChildren = target.type === 'Array' && target.arrayItemDef?.objDef ?
             target.arrayItemDef.objDef.map(child => {
                 const childPayload = this.createMappingPayload(child);
-                // Set iterator for array item children
                 if (this.iteratorConfigs[target._id]?.[0]) {
                     const sourceId = this.iteratorConfigs[target._id][0].sourceId;
                     const source = this.findSourceById(sourceId);
@@ -1493,12 +1500,18 @@ export class AppComponent implements AfterViewInit {
                         value: source?.dataPath || this.iteratorConfigs[target._id][0].customPath
                     };
                 }
-                return childPayload;
-            }) : [];
+                return this.isPayloadValid(childPayload) ? childPayload : null;
+            }).filter(Boolean) : [];
 
         // Combine and filter all children
-        const children = [...regularChildren, ...arrayItemChildren]
-            .filter(childPayload => this.isPayloadValid(childPayload));
+        const children = [...regularChildren, ...arrayItemChildren];
+
+        const mappedSources = this.getMappedSources(target._id).map(source => ({
+            _id: source._id,
+            type: source.type,
+            dataPath: source.dataPath,
+            dataPathSegs: source.dataPathSegs
+        }));
 
         return {
             expression: {
@@ -1516,12 +1529,7 @@ export class AppComponent implements AfterViewInit {
                 arrayItemType: target.arrayItemType
             },
             children,
-            sources: this.getMappedSources(target._id).map(source => ({
-                _id: source._id,
-                type: source.type,
-                dataPath: source.dataPath,
-                dataPathSegs: source.dataPathSegs
-            })),
+            sources: mappedSources,
             availableIterators,
             iterator: parentIterator ? {
                 label: parentIterator.iteratorName,
@@ -1575,6 +1583,7 @@ export class AppComponent implements AfterViewInit {
         this.targetConfigs = {};
         this.conditionalConfigs = {};
         this.targetMappingStates = {};
+        this.iteratorConfigs = {};
 
         // Recursive function to process each payload item
         const processPayloadItem = (item: MappingPayload) => {
@@ -1594,8 +1603,7 @@ export class AppComponent implements AfterViewInit {
                 item.sources.forEach(source => {
                     this.mappings.push({
                         sourceId: source._id,
-                        targetId: item.target._id,
-                        // Remove type property as it's not in the interface
+                        targetId: item.target._id
                     });
                 });
             }
@@ -1610,6 +1618,15 @@ export class AppComponent implements AfterViewInit {
                 if (item.target._id === this.selectedTargetId) {
                     this.hasElseBlock = item.expression.conditions.some(c => c.type === 'else');
                 }
+            }
+
+            // Handle iterators
+            if (item.availableIterators?.length > 0) {
+                this.iteratorConfigs[item.target._id] = item.availableIterators.map(iterator => ({
+                    sourceId: iterator.value,
+                    iteratorName: iterator.label,
+                    customPath: iterator.value
+                }));
             }
 
             // Process children recursively
