@@ -46,31 +46,14 @@ interface TargetMappingState {
 }
 
 interface MappingPayload {
-    expression: {
-        type: 'simple' | 'conditional';
-        value: string;
-        conditions?: ConditionalBlock[];
-    };
+    expression: any;
     key: string;
     name: string;
-    target: {
-        _id: string;
-        type: string;
-        dataPath: string;
-        dataPathSegs: string[];
-        arrayIndex?: number;
-        arrayItemType?: string;
-    };
-    children: MappingPayload[];
-    sources: Array<{
-        _id: string;
-        type: string;
-        dataPath: string;
-        dataPathSegs: string[];
-        mappingType?: 'copy' | 'iterate';
-    }>;
-    mappingType?: 'copy' | 'iterate';
-    iterators?: Array<{ label: string; value: string }>;
+    target: any;
+    children: any[];
+    sources: any[];
+    availableIterators: Array<{ label: string, value: string }>;
+    iterator?: any;
 }
 
 // Add new interface for iterator config
@@ -1459,13 +1442,32 @@ export class AppComponent implements AfterViewInit {
             .filter(payload => this.isPayloadValid(payload));
     }
 
+    private isPayloadValid(payload: MappingPayload): boolean {
+        // Check if there are any sources mapped
+        const hasSources = payload.sources.length > 0;
+
+        // Check if there is any configuration with actual content
+        const hasConfig = payload.expression.type === 'simple' ?
+            !!payload.expression.value.trim() :
+            !!(payload.expression.conditions?.some(c => c.condition?.trim() || c.value.trim()));
+
+        // Check if there are iterators defined
+        const hasIterators = payload.availableIterators.length > 0;
+
+        // Check if this is using a parent iterator and has a value
+        const usesIterator = !!payload.iterator && !!payload.expression.value.trim();
+
+        // Valid if it has sources, valid children, configuration, iterators, or uses parent iterator
+        return hasSources || hasConfig || hasIterators || usesIterator;
+    }
+
     private createMappingPayload(target: FieldDefinition): MappingPayload {
         const isConditional = this.targetMappingStates[target._id]?.isConditional || false;
         const mapping = this.mappings.find(m => m.targetId === target._id);
         const conditions = isConditional ? this.conditionalConfigs[target._id]?.conditions || [] : [];
 
         // Get iterators for this target
-        const iterators = this.iteratorConfigs[target._id]?.map(config => {
+        const availableIterators = this.iteratorConfigs[target._id]?.map(config => {
             const source = this.findSourceById(config.sourceId);
             return {
                 label: config.iteratorName,
@@ -1473,11 +1475,36 @@ export class AppComponent implements AfterViewInit {
             };
         }) || [];
 
+        // Get parent iterator info
+        const parentIterator = target.dataPath.includes('[]') ?
+            this.findParentArrayIterator(target._id) : null;
+
+        // Get regular children and array item children
+        const regularChildren = target.objDef?.map(child => this.createMappingPayload(child)) || [];
+        const arrayItemChildren = target.type === 'Array' && target.arrayItemDef?.objDef ?
+            target.arrayItemDef.objDef.map(child => {
+                const childPayload = this.createMappingPayload(child);
+                // Set iterator for array item children
+                if (this.iteratorConfigs[target._id]?.[0]) {
+                    const sourceId = this.iteratorConfigs[target._id][0].sourceId;
+                    const source = this.findSourceById(sourceId);
+                    childPayload.iterator = {
+                        key: this.iteratorConfigs[target._id][0].iteratorName,
+                        value: source?.dataPath || this.iteratorConfigs[target._id][0].customPath
+                    };
+                }
+                return childPayload;
+            }) : [];
+
+        // Combine and filter all children
+        const children = [...regularChildren, ...arrayItemChildren]
+            .filter(childPayload => this.isPayloadValid(childPayload));
+
         return {
             expression: {
                 type: isConditional ? 'conditional' : 'simple',
                 value: this.targetConfigs[target._id] || '',
-                conditions: conditions || []
+                conditions
             },
             key: target.dataPathSegs[target.dataPathSegs.length - 1],
             name: target.dataPathSegs[target.dataPathSegs.length - 1],
@@ -1488,32 +1515,19 @@ export class AppComponent implements AfterViewInit {
                 dataPathSegs: target.dataPathSegs,
                 arrayItemType: target.arrayItemType
             },
-            children: [],
+            children,
             sources: this.getMappedSources(target._id).map(source => ({
                 _id: source._id,
                 type: source.type,
                 dataPath: source.dataPath,
                 dataPathSegs: source.dataPathSegs
             })),
-            iterators,  // Add iterators to payload
-            mappingType: mapping?.mappingType
+            availableIterators,
+            iterator: parentIterator ? {
+                label: parentIterator.iteratorName,
+                value: parentIterator.arrayPath
+            } : null
         };
-    }
-
-    private isPayloadValid(payload: MappingPayload) {
-        // Check if there are any sources mapped
-        const hasSources = payload.sources.length > 0;
-
-        // Check if there are any valid children
-        const hasChildren = payload.children.length > 0;
-
-        // Check if there is any configuration
-        const hasConfig = payload.expression.type === 'simple' ?
-            !!payload.expression.value.trim() :
-            !!(payload.expression.conditions?.some(c => c.condition?.trim() || c.value.trim()));
-
-        // Valid if it has sources, children, or configuration
-        return hasSources || hasChildren || hasConfig;
     }
 
     private getArrayItems(arrayField: FieldDefinition) {
