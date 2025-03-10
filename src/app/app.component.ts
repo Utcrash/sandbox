@@ -93,6 +93,7 @@ export class AppComponent implements AfterViewInit {
     expandedObjects: Set<string> = new Set();
     hasElseBlock = false;
     conditionalConfigs: any = {};
+    iteratorConfigs: { [targetId: string]: string } = {};
 
     // Add property to store mapping type per target
     private targetMappingStates: any = {};
@@ -143,6 +144,11 @@ export class AppComponent implements AfterViewInit {
     getSourceIdsForTarget(targetId) {
         const mappedSources = this.getMappedSources(targetId);
         if (!mappedSources.length) return '';
+
+        // Check if this target has an iterator config
+        if (this.iteratorConfigs[targetId]) {
+            return ''; // Return empty if there's an iterator
+        }
 
         // Get existing config or create new template with mustache syntax
         const existingConfig = this.targetConfigs[targetId];
@@ -360,7 +366,19 @@ export class AppComponent implements AfterViewInit {
                 'Cancel - Iterate over array items'
             ) ? 'copy' : 'iterate';
 
-            // Add mapping with type
+            if (mappingType === 'copy') {
+                // Add to normal textarea
+                const currentValue = this.targetConfigs[targetItem._id] || '';
+                this.targetConfigs[targetItem._id] = currentValue ?
+                    `${currentValue}\n${sourceItem.dataPath}` :
+                    sourceItem.dataPath;
+                delete this.iteratorConfigs[targetItem._id];
+            } else {
+                // Add to iterator textarea only
+                this.iteratorConfigs[targetItem._id] = `{{${sourceItem.dataPath}}}`;
+                this.targetConfigs[targetItem._id] = ''; // Clear value textarea
+            }
+
             this.addMapping(sourceItem._id, targetItem._id, { mappingType });
             return;
         }
@@ -391,6 +409,28 @@ export class AppComponent implements AfterViewInit {
                 if (index !== null) {
                     const numIndex = parseInt(index);
                     if (!isNaN(numIndex) && numIndex >= 0) {
+                        // Format the dataPath based on whether it's an array item or array
+                        let formattedPath;
+                        if (sourceItem.dataPath.includes('[]')) {
+                            // For array items (e.g., addresses[].street -> addresses[0].street)
+                            const pathParts = sourceItem.dataPath.split('.');
+                            formattedPath = pathParts.map(part => {
+                                if (part.includes('[]')) {
+                                    return part.replace('[]', `[${numIndex}]`);
+                                }
+                                return part;
+                            }).join('.');
+                        } else {
+                            // For arrays (e.g., tags -> tags[0])
+                            formattedPath = `${sourceItem.dataPath}[${numIndex}]`;
+                        }
+
+                        // Add to textarea
+                        const currentValue = this.targetConfigs[targetItem._id] || '';
+                        this.targetConfigs[targetItem._id] = currentValue ?
+                            `${currentValue}\n{{${formattedPath}}}` :
+                            `{{${formattedPath}}}`;
+
                         this.addMapping(sourceItem._id, targetItem._id, { index: numIndex });
                     } else {
                         alert('Please enter a valid non-negative number');
@@ -429,10 +469,30 @@ export class AppComponent implements AfterViewInit {
         const sources = this.getMappedSources(targetId);
         if (sources.length === 0) return '';
 
-        if (sources.length <= 2) {
-            return sources.map(s => s.dataPath).join(', ');
+        const formattedPaths = sources.map(source => {
+            const mapping = this.mappings.find(m => m.sourceId === source._id && m.targetId === targetId);
+            if (mapping?.index !== undefined) {
+                if (source.dataPath.includes('[]')) {
+                    // For array items (e.g., addresses[].street -> addresses[0].street)
+                    const pathParts = source.dataPath.split('.');
+                    return pathParts.map(part => {
+                        if (part.includes('[]')) {
+                            return part.replace('[]', `[${mapping.index}]`);
+                        }
+                        return part;
+                    }).join('.');
+                } else {
+                    // For arrays (e.g., tags -> tags[0])
+                    return `${source.dataPath}[${mapping.index}]`;
+                }
+            }
+            return source.dataPath;
+        });
+
+        if (formattedPaths.length <= 2) {
+            return formattedPaths.join(', ');
         }
-        return `${sources[0].dataPath}, ${sources[1].dataPath} +${sources.length - 2} more`;
+        return `${formattedPaths[0]}, ${formattedPaths[1]} +${formattedPaths.length - 2} more`;
     }
 
     getMappedSourcesTooltip(targetId) {
@@ -487,13 +547,10 @@ export class AppComponent implements AfterViewInit {
                 const targetList = targetEl.closest('.target-list');
 
                 if (sourceList && targetList) {
-                    const sourceListBounds = sourceList.getBoundingClientRect();
-                    const targetListBounds = targetList.getBoundingClientRect();
-
-                    const sourceVisible = sourceBounds.top >= sourceListBounds.top &&
-                        sourceBounds.bottom <= sourceListBounds.bottom;
-                    const targetVisible = targetBounds.top >= targetListBounds.top &&
-                        targetBounds.bottom <= targetListBounds.bottom;
+                    const sourceVisible = sourceBounds.top >= sourceList.getBoundingClientRect().top &&
+                        sourceBounds.bottom <= sourceList.getBoundingClientRect().bottom;
+                    const targetVisible = targetBounds.top >= targetList.getBoundingClientRect().top &&
+                        targetBounds.bottom <= targetList.getBoundingClientRect().bottom;
 
                     if (sourceVisible && targetVisible) {
                         this.connectionLines.push({
@@ -986,7 +1043,8 @@ export class AppComponent implements AfterViewInit {
         if (mapping.isForceMapping) {
             return '(forced)';
         }
-        return mapping.index !== undefined ? `[${mapping.index}]` : '';
+        // Don't show index here since it's now part of the dataPath
+        return '';
     }
 
     // Add this method to get the mapping details for a source-target pair

@@ -16,7 +16,7 @@
                 <div class="card-body" (scroll)="drawConnectionLines(); $event.stopPropagation()">
                     <div *ngFor="let nodeId of nodeIds" class="mb-4">
                         <h6 class="border-bottom pb-2">{{ nodeId }}</h6>
-                        <div class="source-list">
+                        <div class="source-list" #sourceList>
                             <div *ngFor="let item of getSourcesByNodeId(nodeId)">
                                 <ng-container
                                     *ngTemplateOutlet="sourceItemTemplate; context: { $implicit: item }"></ng-container>
@@ -34,7 +34,7 @@
                     <h5 class="mb-0">Targets</h5>
                 </div>
                 <div class="card-body" (scroll)="drawConnectionLines(); $event.stopPropagation()">
-                    <div class="target-list">
+                    <div class="target-list" #targetList>
                         <div *ngFor="let item of targets">
                             <ng-container
                                 *ngTemplateOutlet="targetItemTemplate; context: { $implicit: item }"></ng-container>
@@ -73,12 +73,22 @@
                         </div>
                     </div>
 
-                    <!-- Simple Mapping -->
-                    <textarea *ngIf="!isConditionalMapping" class="form-control code-view"
-                        [value]="getSourceIdsForTarget(selectedTargetId)"
-                        (input)="onConfigChange($event, selectedTargetId)" (dragover)="onTextAreaDragOver($event)"
-                        (drop)="onTextAreaDrop($event)">
-                    </textarea>
+                    <!-- Iterator textarea -->
+                    <div *ngIf="iteratorConfigs[selectedTargetId]" class="mb-3">
+                        <h6 class="text-muted mb-2">Iterator:</h6>
+                        <textarea class="form-control code-view" [value]="iteratorConfigs[selectedTargetId]" readonly>
+                        </textarea>
+                    </div>
+
+                    <!-- Value textarea -->
+                    <div class="mb-3">
+                        <h6 class="text-muted mb-2">Value:</h6>
+                        <textarea class="form-control code-view"
+                            [value]="!isConditionalMapping ? getSourceIdsForTarget(selectedTargetId) : (targetConfigs[selectedTargetId] || '')"
+                            (input)="onConfigChange($event, selectedTargetId)" (dragover)="onTextAreaDragOver($event)"
+                            (drop)="onTextAreaDrop($event)">
+                        </textarea>
+                    </div>
 
                     <!-- Conditional Mapping -->
                     <div *ngIf="isConditionalMapping" class="conditional-mapping">
@@ -169,14 +179,14 @@
                     {{ item.dataPath }}
                     <span *ngIf="item.type === 'Array'" class="array-type-badge">
                         of {{ item.arrayItemType }}
-                        <button class="btn btn-sm btn-link p-0 ms-2" (click)="createArrayItem(item, $event)"
+                        <!-- <button class="btn btn-sm btn-link p-0 ms-2" (click)="createArrayItem(item, $event)"
                             title="Create array item">
                             <i class="bi bi-plus-circle"></i>
                         </button>
                         <button *ngIf="hasArrayItems(item)" class="btn btn-sm btn-link p-0 ms-1"
                             (click)="removeLastArrayItem(item, $event)" title="Remove last array item">
                             <i class="bi bi-dash-circle"></i>
-                        </button>
+                        </button> -->
                     </span>
                     <div *ngIf="getMappedTargets(item._id).length > 0" class="d-inline-block ms-2">
                         <span *ngFor="let target of getMappedTargets(item._id)" class="mapping-pill">
@@ -223,10 +233,10 @@
 <!-- Target item template -->
 <ng-template #targetItemTemplate let-item>
     <div class="drag-item" #targetItem [attr.data-id]="item._id" [class.mapped]="getMappedSources(item._id).length > 0"
-        [class.selected]="selectedTargetId === item._id" [class.array-item]="item.arrayIndex !== undefined"
-        (click)="activateTarget(item._id, $event)" (dragover)="onDragOver($event); $event.stopPropagation()"
-        (drop)="onDrop($event, item); $event.stopPropagation()">
-        <div class="p-2 mb-2 bg-light rounded d-flex justify-content-between align-items-center item-header">
+        [class.selected]="selectedTargetId === item._id" (dragover)="onDragOver($event)" (drop)="onDrop($event, item)">
+
+        <!-- Main target content -->
+        <div class="p-2 mb-2 bg-light rounded d-flex justify-content-between align-items-center">
             <div class="target-info">
                 <div class="d-flex align-items-center">
                     <span class="type-badge" [ngClass]="'type-' + item.type.toLowerCase()">{{ item.type }}</span>
@@ -242,17 +252,6 @@
                             <i class="bi bi-dash-circle"></i>
                         </button>
                     </span>
-                    <div *ngIf="getMappedSources(item._id).length > 0" class="d-inline-block ms-2">
-                        <span *ngFor="let source of getMappedSources(item._id)" class="mapping-pill">
-                            ← {{ source.dataPath }}
-                            <span *ngIf="source.type === 'Array' || source._id.includes('_item_')"
-                                class="array-mapping-info">
-                                {{ getMappingDisplay(getMappingForSource(source._id, item._id)) }}
-                            </span>
-                            <i class="bi bi-x-circle ms-1" (click)="removeMapping(source._id, item._id, $event)"
-                                title="Remove mapping"></i>
-                        </span>
-                    </div>
                 </div>
 
                 <span *ngIf="isTargetConfigured(item._id)" class="badge bg-info ms-2">
@@ -290,6 +289,19 @@
             class="nested-properties ms-3 mt-2">
             <div *ngFor="let nestedItem of item.objDef">
                 <ng-container *ngTemplateOutlet="targetItemTemplate; context: { $implicit: nestedItem }"></ng-container>
+            </div>
+        </div>
+
+        <!-- Mapped sources at bottom -->
+        <div *ngIf="getMappedSources(item._id).length > 0" class="mapped-sources p-2">
+            <div *ngFor="let source of getMappedSources(item._id)" class="mapping-pill mb-1">
+                ← {{ source.dataPath }}
+                <span *ngIf="source.type === 'Array' || source._id.includes('_item_')" class="array-mapping-info">
+                    {{ getMappingDisplay(getMappingForSource(source._id, item._id)) }}
+                </span>
+                <i class="bi bi-x-circle ms-1" (click)="removeMapping(source._id, item._id, $event)"
+                    title="Remove mapping">
+                </i>
             </div>
         </div>
     </div>
