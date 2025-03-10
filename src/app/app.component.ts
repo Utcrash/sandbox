@@ -1,4 +1,4 @@
-import { Component, AfterViewInit, ViewChildren, QueryList, ElementRef, HostListener, ViewChild } from '@angular/core';
+import { Component, AfterViewInit, ViewChildren, QueryList, ElementRef, HostListener, ViewChild, OnInit } from '@angular/core';
 
 interface FieldDefinition {
     _id: string;
@@ -74,7 +74,7 @@ declare global {
     templateUrl: './app.component.html',
     styleUrls: ['./app.component.scss']
 })
-export class AppComponent implements AfterViewInit {
+export class AppComponent implements AfterViewInit, OnInit {
     title = 'sandbox';
     sources = [];
     targets = [];
@@ -110,6 +110,222 @@ export class AppComponent implements AfterViewInit {
     @ViewChild('container') container!: ElementRef;
     @ViewChild('sourceList') sourceList: ElementRef;
     @ViewChild('targetList') targetList: ElementRef;
+
+    ngOnInit(): void {
+        const obj = [
+            {
+                "expression": {
+                    "type": "simple",
+                    "value": "{{firstName}} + {{lastName}}",
+                    "conditions": []
+                },
+                "key": "name",
+                "name": "name",
+                "target": {
+                    "_id": "target1",
+                    "type": "String",
+                    "dataPath": "name",
+                    "dataPathSegs": [
+                        "name"
+                    ]
+                },
+                "children": [],
+                "sources": [
+                    {
+                        "_id": "source1",
+                        "type": "String",
+                        "dataPath": "firstName",
+                        "dataPathSegs": [
+                            "firstName"
+                        ]
+                    },
+                    {
+                        "_id": "source2",
+                        "type": "String",
+                        "dataPath": "lastName",
+                        "dataPathSegs": [
+                            "lastName"
+                        ]
+                    }
+                ],
+                "availableIterators": [],
+                "iterator": null
+            },
+            {
+                "expression": {
+                    "type": "simple",
+                    "value": "",
+                    "conditions": []
+                },
+                "key": "location",
+                "name": "location",
+                "target": {
+                    "_id": "target3",
+                    "type": "Object",
+                    "dataPath": "location",
+                    "dataPathSegs": [
+                        "location"
+                    ]
+                },
+                "children": [
+                    {
+                        "expression": {
+                            "type": "simple",
+                            "value": "",
+                            "conditions": []
+                        },
+                        "key": "addressLine",
+                        "name": "addressLine",
+                        "target": {
+                            "_id": "target3_1",
+                            "type": "String",
+                            "dataPath": "location.addressLine",
+                            "dataPathSegs": [
+                                "location",
+                                "addressLine"
+                            ]
+                        },
+                        "children": [],
+                        "sources": [
+                            {
+                                "_id": "source3_1",
+                                "type": "String",
+                                "dataPath": "address.street",
+                                "dataPathSegs": [
+                                    "address",
+                                    "street"
+                                ]
+                            }
+                        ],
+                        "availableIterators": [],
+                        "iterator": null
+                    }
+                ],
+                "sources": [],
+                "availableIterators": [],
+                "iterator": null
+            },
+            {
+                "expression": {
+                    "type": "simple",
+                    "value": "{{tags[1]}}",
+                    "conditions": []
+                },
+                "key": "emailAddress",
+                "name": "emailAddress",
+                "target": {
+                    "_id": "target4",
+                    "type": "String",
+                    "dataPath": "emailAddress",
+                    "dataPathSegs": [
+                        "emailAddress"
+                    ]
+                },
+                "children": [],
+                "sources": [
+                    {
+                        "_id": "source6",
+                        "type": "Array",
+                        "dataPath": "tags",
+                        "dataPathSegs": [
+                            "tags"
+                        ]
+                    }
+                ],
+                "availableIterators": [],
+                "iterator": null
+            },
+            {
+                "expression": {
+                    "type": "simple",
+                    "value": "",
+                    "conditions": []
+                },
+                "key": "contactAddresses",
+                "name": "contactAddresses",
+                "target": {
+                    "_id": "target7",
+                    "type": "Array",
+                    "dataPath": "contactAddresses",
+                    "dataPathSegs": [
+                        "contactAddresses"
+                    ],
+                    "arrayItemType": "Object"
+                },
+                "children": [
+                    {
+                        "expression": {
+                            "type": "simple",
+                            "value": "{{arrayItem}}",
+                            "conditions": []
+                        },
+                        "key": "line1",
+                        "name": "line1",
+                        "target": {
+                            "_id": "target7_item_1",
+                            "type": "String",
+                            "dataPath": "contactAddresses[].line1",
+                            "dataPathSegs": [
+                                "contactAddresses",
+                                "line1"
+                            ]
+                        },
+                        "children": [],
+                        "sources": [],
+                        "availableIterators": [],
+                        "iterator": {
+                            "key": "arrayItem",
+                            "value": "addresses"
+                        }
+                    },
+                    {
+                        "expression": {
+                            "type": "simple",
+                            "value": "{{arrayItem.city}}",
+                            "conditions": []
+                        },
+                        "key": "city",
+                        "name": "city",
+                        "target": {
+                            "_id": "target7_item_2",
+                            "type": "String",
+                            "dataPath": "contactAddresses[].city",
+                            "dataPathSegs": [
+                                "contactAddresses",
+                                "city"
+                            ]
+                        },
+                        "children": [],
+                        "sources": [],
+                        "availableIterators": [],
+                        "iterator": {
+                            "key": "arrayItem",
+                            "value": "addresses"
+                        }
+                    }
+                ],
+                "sources": [
+                    {
+                        "_id": "source7",
+                        "type": "Array",
+                        "dataPath": "addresses",
+                        "dataPathSegs": [
+                            "addresses"
+                        ]
+                    }
+                ],
+                "availableIterators": [
+                    {
+                        "label": "arrayItem",
+                        "value": "addresses"
+                    }
+                ],
+                "iterator": null
+            }
+        ]
+
+        this.applyPayload(obj)
+    }
 
     get nodeIds() {
         return [...new Set(this.sources.map(item => item.nodeId))];
@@ -1585,58 +1801,62 @@ export class AppComponent implements AfterViewInit {
         this.targetMappingStates = {};
         this.iteratorConfigs = {};
 
-        // Recursive function to process each payload item
         const processPayloadItem = (item: MappingPayload) => {
+            const targetId = item.target._id;
+
             // Set mapping type
-            this.targetMappingStates[item.target._id] = {
+            this.targetMappingStates[targetId] = {
                 isConditional: item.expression.type === 'conditional'
             };
 
             // Handle simple mapping
-            if (item.expression.type === 'simple') {
-                // Set configuration if exists
-                if (item.expression.value) {
-                    this.targetConfigs[item.target._id] = item.expression.value;
-                }
-
-                // Create mappings for sources
-                item.sources.forEach(source => {
-                    this.mappings.push({
-                        sourceId: source._id,
-                        targetId: item.target._id
-                    });
-                });
+            if (item.expression.type === 'simple' && item.expression.value) {
+                this.targetConfigs[targetId] = item.expression.value;
             }
+
+            // Create mappings for sources
+            item.sources.forEach(source => {
+                const mappingType = item.target.type === 'Array' ? 'iterate' : undefined;
+                this.mappings.push({
+                    sourceId: source._id,
+                    targetId: targetId,
+                    mappingType,
+                    iteratorName: item.availableIterators?.[0]?.label
+                });
+            });
 
             // Handle conditional mapping
             if (item.expression.type === 'conditional' && item.expression.conditions) {
-                this.conditionalConfigs[item.target._id] = {
+                this.conditionalConfigs[targetId] = {
                     conditions: item.expression.conditions
                 };
-
-                // Set hasElseBlock if else condition exists
-                if (item.target._id === this.selectedTargetId) {
-                    this.hasElseBlock = item.expression.conditions.some(c => c.type === 'else');
-                }
             }
 
-            // Handle iterators
-            if (item.availableIterators?.length > 0) {
-                this.iteratorConfigs[item.target._id] = item.availableIterators.map(iterator => ({
-                    sourceId: iterator.value,
-                    iteratorName: iterator.label,
-                    customPath: iterator.value
-                }));
+            // Handle array iterators
+            if (item.target.type === 'Array' && item.sources.length > 0) {
+                const sourceArray = item.sources[0];
+                this.iteratorConfigs[targetId] = [{
+                    sourceId: sourceArray._id,
+                    iteratorName: 'arrayItem',
+                    customPath: sourceArray.dataPath
+                }];
             }
 
             // Process children recursively
-            item.children.forEach(child => processPayloadItem(child));
+            item.children?.forEach(child => {
+                if (this.isPayloadValid(child)) {
+                    processPayloadItem(child);
+                }
+            });
         };
 
         // Process each root level item
-        payload.forEach(item => processPayloadItem(item));
+        payload.forEach(item => {
+            if (this.isPayloadValid(item)) {
+                processPayloadItem(item);
+            }
+        });
 
-        // Trigger change detection and UI updates
         this.drawConnectionLines();
     }
 
@@ -1673,10 +1893,8 @@ export class AppComponent implements AfterViewInit {
 
         return configs.map(config => {
             const source = this.findSourceById(config.sourceId);
-            if (!source) return '';
-
-            return `{{${source.dataPath}}}`;
-        }).join('\n');
+            return source ? `{{${config.iteratorName}}}` : '';
+        }).filter(Boolean).join('\n');
     }
 
     onIteratorChange(event: Event, targetId: string) {
@@ -1718,20 +1936,21 @@ export class AppComponent implements AfterViewInit {
     // Add method to get available iterators for a target
     getAvailableIterators(targetId: string): string[] {
         const messages: string[] = [];
-
-        // Get all parent arrays with iterators
         const target = this.findTargetById(targetId);
         if (!target) return messages;
 
-        // Look through all iterators
-        Object.entries(this.iteratorConfigs).forEach(([tid, configs]) => {
-            (configs as IteratorConfig[]).forEach(config => {
-                const source = this.findSourceById(config.sourceId);
-                if (source && config.iteratorName) {
-                    messages.push(`Available: ${config.iteratorName} (from ${source.dataPath})`);
-                }
-            });
-        });
+        // Get all parent arrays with iterators
+        for (const [tid, configs] of Object.entries(this.iteratorConfigs)) {
+            const targetWithIterator = this.findTargetById(tid);
+            if (targetWithIterator && Array.isArray(configs)) {
+                configs.forEach(config => {
+                    const source = this.findSourceById(config.sourceId);
+                    if (source && config.iteratorName) {
+                        messages.push(`Available: ${config.iteratorName} (from ${source.dataPath})`);
+                    }
+                });
+            }
+        }
 
         return messages;
     }
