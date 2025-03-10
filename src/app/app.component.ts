@@ -116,128 +116,6 @@ export class AppComponent implements AfterViewInit, OnInit {
             {
                 "expression": {
                     "type": "simple",
-                    "value": "{{firstName}} + {{lastName}}",
-                    "conditions": []
-                },
-                "key": "name",
-                "name": "name",
-                "target": {
-                    "_id": "target1",
-                    "type": "String",
-                    "dataPath": "name",
-                    "dataPathSegs": [
-                        "name"
-                    ]
-                },
-                "children": [],
-                "sources": [
-                    {
-                        "_id": "source1",
-                        "type": "String",
-                        "dataPath": "firstName",
-                        "dataPathSegs": [
-                            "firstName"
-                        ]
-                    },
-                    {
-                        "_id": "source2",
-                        "type": "String",
-                        "dataPath": "lastName",
-                        "dataPathSegs": [
-                            "lastName"
-                        ]
-                    }
-                ],
-                "availableIterators": [],
-                "iterator": null
-            },
-            {
-                "expression": {
-                    "type": "simple",
-                    "value": "",
-                    "conditions": []
-                },
-                "key": "location",
-                "name": "location",
-                "target": {
-                    "_id": "target3",
-                    "type": "Object",
-                    "dataPath": "location",
-                    "dataPathSegs": [
-                        "location"
-                    ]
-                },
-                "children": [
-                    {
-                        "expression": {
-                            "type": "simple",
-                            "value": "",
-                            "conditions": []
-                        },
-                        "key": "addressLine",
-                        "name": "addressLine",
-                        "target": {
-                            "_id": "target3_1",
-                            "type": "String",
-                            "dataPath": "location.addressLine",
-                            "dataPathSegs": [
-                                "location",
-                                "addressLine"
-                            ]
-                        },
-                        "children": [],
-                        "sources": [
-                            {
-                                "_id": "source3_1",
-                                "type": "String",
-                                "dataPath": "address.street",
-                                "dataPathSegs": [
-                                    "address",
-                                    "street"
-                                ]
-                            }
-                        ],
-                        "availableIterators": [],
-                        "iterator": null
-                    }
-                ],
-                "sources": [],
-                "availableIterators": [],
-                "iterator": null
-            },
-            {
-                "expression": {
-                    "type": "simple",
-                    "value": "{{tags[1]}}",
-                    "conditions": []
-                },
-                "key": "emailAddress",
-                "name": "emailAddress",
-                "target": {
-                    "_id": "target4",
-                    "type": "String",
-                    "dataPath": "emailAddress",
-                    "dataPathSegs": [
-                        "emailAddress"
-                    ]
-                },
-                "children": [],
-                "sources": [
-                    {
-                        "_id": "source6",
-                        "type": "Array",
-                        "dataPath": "tags",
-                        "dataPathSegs": [
-                            "tags"
-                        ]
-                    }
-                ],
-                "availableIterators": [],
-                "iterator": null
-            },
-            {
-                "expression": {
-                    "type": "simple",
                     "value": "",
                     "conditions": []
                 },
@@ -256,7 +134,7 @@ export class AppComponent implements AfterViewInit, OnInit {
                     {
                         "expression": {
                             "type": "simple",
-                            "value": "{{arrayItem}}",
+                            "value": "{{fefwef}}",
                             "conditions": []
                         },
                         "key": "line1",
@@ -274,14 +152,14 @@ export class AppComponent implements AfterViewInit, OnInit {
                         "sources": [],
                         "availableIterators": [],
                         "iterator": {
-                            "key": "arrayItem",
+                            "key": "efewf",
                             "value": "addresses"
                         }
                     },
                     {
                         "expression": {
                             "type": "simple",
-                            "value": "{{arrayItem.city}}",
+                            "value": "{{efewf}}",
                             "conditions": []
                         },
                         "key": "city",
@@ -299,7 +177,7 @@ export class AppComponent implements AfterViewInit, OnInit {
                         "sources": [],
                         "availableIterators": [],
                         "iterator": {
-                            "key": "arrayItem",
+                            "key": "efewf",
                             "value": "addresses"
                         }
                     }
@@ -312,12 +190,24 @@ export class AppComponent implements AfterViewInit, OnInit {
                         "dataPathSegs": [
                             "addresses"
                         ]
+                    },
+                    {
+                        "_id": "source6",
+                        "type": "Array",
+                        "dataPath": "tags",
+                        "dataPathSegs": [
+                            "tags"
+                        ]
                     }
                 ],
                 "availableIterators": [
                     {
-                        "label": "arrayItem",
+                        "label": "efewf",
                         "value": "addresses"
+                    },
+                    {
+                        "label": "fefwef",
+                        "value": "tags"
                     }
                 ],
                 "iterator": null
@@ -574,6 +464,15 @@ export class AppComponent implements AfterViewInit, OnInit {
 
         const sourceItem = JSON.parse(data);
 
+        // Check if source is already mapped to this target
+        const isDuplicate = this.mappings.some(m =>
+            m.sourceId === sourceItem._id && m.targetId === targetItem._id
+        );
+        if (isDuplicate) {
+            alert('This source is already mapped to this target.');
+            return;
+        }
+
         // Check if both source and target are arrays
         if (sourceItem.type === 'Array' && targetItem.type === 'Array') {
             const mappingType = confirm(
@@ -601,7 +500,8 @@ export class AppComponent implements AfterViewInit, OnInit {
                 // Add new iterator config
                 this.iteratorConfigs[targetItem._id].push({
                     sourceId: sourceItem._id,
-                    iteratorName: iteratorName
+                    iteratorName: iteratorName,
+                    customPath: sourceItem.dataPath
                 });
 
                 this.targetConfigs[targetItem._id] = ''; // Clear value textarea
@@ -1835,11 +1735,11 @@ export class AppComponent implements AfterViewInit, OnInit {
             // Handle array iterators
             if (item.target.type === 'Array' && item.sources.length > 0) {
                 const sourceArray = item.sources[0];
-                this.iteratorConfigs[targetId] = [{
+                this.iteratorConfigs[targetId] = item.availableIterators?.map(iterator => ({
                     sourceId: sourceArray._id,
-                    iteratorName: 'arrayItem',
-                    customPath: sourceArray.dataPath
-                }];
+                    iteratorName: iterator.label,
+                    customPath: iterator.value
+                })) || [];
             }
 
             // Process children recursively
@@ -1946,7 +1846,7 @@ export class AppComponent implements AfterViewInit, OnInit {
                 configs.forEach(config => {
                     const source = this.findSourceById(config.sourceId);
                     if (source && config.iteratorName) {
-                        messages.push(`Available: ${config.iteratorName} (from ${source.dataPath})`);
+                        messages.push(`Available: ${config.iteratorName} (from ${config.customPath})`);
                     }
                 });
             }
