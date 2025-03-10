@@ -1326,32 +1326,26 @@ export class AppComponent implements AfterViewInit, OnInit {
     onTextAreaDrop(event: DragEvent) {
         event.preventDefault();
         const dataPath = event.dataTransfer?.getData('text/plain');
-        const isIterator = event.dataTransfer?.getData('application/iterator');
         if (!dataPath) return;
 
         const textarea = event.target as HTMLTextAreaElement;
         const cursorPos = textarea.selectionStart || textarea.value.length;
 
-        if (isIterator) {
-            // Handle iterator drop
+        // Find parent array iterator if exists
+        const parentIterator = this.findParentArrayIterator(dataPath);
+        if (parentIterator) {
+            // Get the field name after the array notation
+            const pathParts = dataPath.split('.');
+            const fieldName = pathParts[pathParts.length - 1];
+            const insertText = `{{${parentIterator.iteratorName}.${fieldName}}}`;
+
+            const textBefore = textarea.value.substring(0, cursorPos);
+            const textAfter = textarea.value.substring(cursorPos);
+            textarea.value = `${textBefore}${insertText}${textAfter}`;
+        } else {
             const textBefore = textarea.value.substring(0, cursorPos);
             const textAfter = textarea.value.substring(cursorPos);
             textarea.value = `${textBefore}{{${dataPath}}}${textAfter}`;
-        } else {
-            // Existing source drop handling
-            const parentIterator = this.findParentArrayIterator(dataPath);
-            if (parentIterator) {
-                const relativePath = dataPath.replace(parentIterator.arrayPath + '.', '');
-                const insertText = `{{${parentIterator.iteratorName}.${relativePath}}}`;
-
-                const textBefore = textarea.value.substring(0, cursorPos);
-                const textAfter = textarea.value.substring(cursorPos);
-                textarea.value = `${textBefore}${insertText}${textAfter}`;
-            } else {
-                const textBefore = textarea.value.substring(0, cursorPos);
-                const textAfter = textarea.value.substring(cursorPos);
-                textarea.value = `${textBefore}{{${dataPath}}}${textAfter}`;
-            }
         }
 
         // Update config and cursor position
@@ -1359,6 +1353,21 @@ export class AppComponent implements AfterViewInit, OnInit {
         const newCursorPos = cursorPos + dataPath.length + 4;
         textarea.setSelectionRange(newCursorPos, newCursorPos);
         textarea.focus();
+    }
+
+    findParentArrayIterator(dataPath: string): { iteratorName: string, arrayPath: string } | null {
+        const arrayPath = dataPath.split('[')[0];
+
+        for (const [targetId, configs] of Object.entries(this.iteratorConfigs)) {
+            const matchingConfig = (configs as Array<any>)?.find(config => config.customPath === arrayPath);
+            if (matchingConfig) {
+                return {
+                    iteratorName: matchingConfig.iteratorName,
+                    arrayPath: arrayPath
+                };
+            }
+        }
+        return null;
     }
 
     onMappingTypeChange() {
@@ -1806,31 +1815,6 @@ export class AppComponent implements AfterViewInit, OnInit {
         const config = this.iteratorConfigs[targetId][0] || { sourceId: '', customPath: '' };
         config.customPath = newValue;
         this.iteratorConfigs[targetId][0] = config;
-    }
-
-    // Add method to find parent array with iterator
-    findParentArrayIterator(sourceId: string): { iteratorName: string, arrayPath: string } | null {
-        const source = this.findSourceById(sourceId);
-        if (!source) return null;
-
-        // Check each path segment to find parent array
-        for (let i = source.dataPathSegs.length - 1; i >= 0; i--) {
-            const parentPath = source.dataPathSegs.slice(0, i + 1).join('.');
-            const parentId = this.findIdByPath(parentPath);
-            if (!parentId) continue;
-
-            // Check if this parent has an iterator
-            for (const [targetId, configs] of Object.entries(this.iteratorConfigs)) {
-                const config = (configs as IteratorConfig[]).find(c => c.sourceId === parentId);
-                if (config?.iteratorName) {
-                    return {
-                        iteratorName: config.iteratorName,
-                        arrayPath: parentPath
-                    };
-                }
-            }
-        }
-        return null;
     }
 
     // Add method to get available iterators for a target
