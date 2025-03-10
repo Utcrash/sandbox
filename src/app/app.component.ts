@@ -17,7 +17,8 @@ interface ArrayMapping {
     targetId: string;
     index?: number;
     isForceMapping?: boolean;
-    mappingType?: 'copy' | 'iterate';  // Add this field
+    mappingType?: 'copy' | 'iterate';
+    iteratorName?: string;  // Add this field
 }
 
 type ValidationResult = {
@@ -69,6 +70,14 @@ interface MappingPayload {
         mappingType?: 'copy' | 'iterate';
     }>;
     mappingType?: 'copy' | 'iterate';
+    iterators?: Array<{ label: string; value: string }>;
+}
+
+// Add new interface for iterator config
+interface IteratorConfig {
+    sourceId: string;
+    iteratorName?: string;
+    customPath?: string;
 }
 
 declare global {
@@ -93,7 +102,7 @@ export class AppComponent implements AfterViewInit {
     expandedObjects: Set<string> = new Set();
     hasElseBlock = false;
     conditionalConfigs: any = {};
-    iteratorConfigs: { [targetId: string]: string } = {};
+    iteratorConfigs: any = {};
 
     // Add property to store mapping type per target
     private targetMappingStates: any = {};
@@ -142,17 +151,25 @@ export class AppComponent implements AfterViewInit {
     }
 
     getSourceIdsForTarget(targetId) {
+        // Return existing config if it exists
+        if (this.targetConfigs[targetId]) {
+            return this.targetConfigs[targetId];
+        }
+
+        // Check if this is a child of an array
+        const target = this.findTargetById(targetId);
+        if (target && target.dataPath.includes('[]')) {
+            return ''; // Return empty for array children
+        }
+
+        // For non-array children, continue with normal behavior
         const mappedSources = this.getMappedSources(targetId);
         if (!mappedSources.length) return '';
 
         // Check if this target has an iterator config
         if (this.iteratorConfigs[targetId]) {
-            return ''; // Return empty if there's an iterator
+            return '';
         }
-
-        // Get existing config or create new template with mustache syntax
-        const existingConfig = this.targetConfigs[targetId];
-        if (existingConfig) return existingConfig;
 
         // Create new template with all mapped sources
         return mappedSources
@@ -367,19 +384,34 @@ export class AppComponent implements AfterViewInit {
             ) ? 'copy' : 'iterate';
 
             if (mappingType === 'copy') {
-                // Add to normal textarea
                 const currentValue = this.targetConfigs[targetItem._id] || '';
                 this.targetConfigs[targetItem._id] = currentValue ?
                     `${currentValue}\n${sourceItem.dataPath}` :
                     sourceItem.dataPath;
                 delete this.iteratorConfigs[targetItem._id];
             } else {
-                // Add to iterator textarea only
-                this.iteratorConfigs[targetItem._id] = `{{${sourceItem.dataPath}}}`;
+                // Initialize iterator config array if it doesn't exist
+                if (!this.iteratorConfigs[targetItem._id]) {
+                    this.iteratorConfigs[targetItem._id] = [];
+                }
+
+                // Always prompt for iterator name
+                const iteratorName = this.promptForIteratorName(sourceItem._id);
+                if (!iteratorName) return; // Cancel if no name provided
+
+                // Add new iterator config
+                this.iteratorConfigs[targetItem._id].push({
+                    sourceId: sourceItem._id,
+                    iteratorName: iteratorName
+                });
+
                 this.targetConfigs[targetItem._id] = ''; // Clear value textarea
             }
 
-            this.addMapping(sourceItem._id, targetItem._id, { mappingType });
+            this.addMapping(sourceItem._id, targetItem._id, {
+                mappingType,
+                iteratorName: this.iteratorConfigs[targetItem._id]?.find(ic => ic.sourceId === sourceItem._id)?.iteratorName
+            });
             return;
         }
 
@@ -390,7 +422,8 @@ export class AppComponent implements AfterViewInit {
         }
 
         const validation = this.validateMapping(sourceItem._id, targetItem._id);
-
+        console.log('Source', sourceItem);
+        console.log('target', targetItem)
         if (!validation.isValid) {
             const forceMap = confirm(`${validation.message}\n\nWould you like to force map anyway?`);
             if (forceMap) {
@@ -867,6 +900,12 @@ export class AppComponent implements AfterViewInit {
             !(m.sourceId === sourceId && m.targetId === targetId)
         );
 
+        // Clear iterators if this was an array mapping
+        const source = this.findSourceById(sourceId);
+        if (source?.type === 'Array') {
+            delete this.iteratorConfigs[targetId];
+        }
+
         // Update the config if it exists
         if (this.targetConfigs[targetId]) {
             const source = this.findSourceById(sourceId);
@@ -887,6 +926,14 @@ export class AppComponent implements AfterViewInit {
         this.drawConnectionLines();
     }
 
+    // Add check for duplicate iterators
+    private isDuplicateIterator(targetId: string, iteratorName: string): boolean {
+        return this.iteratorConfigs[targetId]?.some(config =>
+            config.iteratorName === iteratorName
+        ) ?? false;
+    }
+
+
     // Add a debug method to help troubleshoot
     logMappings() {
         console.log('Current mappings:', this.mappings);
@@ -898,6 +945,15 @@ export class AppComponent implements AfterViewInit {
 
         if (!source || !target) {
             return { isValid: false, message: 'Invalid source or target' };
+        }
+
+        // Non-array to Array mapping
+        if (source.type !== 'Array' && target.type === 'Array') {
+            return {
+                isValid: false,
+                message: 'Cannot map a non-array directly to an array. Please create array items first.',
+                isTypeError: true
+            };
         }
 
         const sourceParent = this.findParentField(source);
@@ -919,7 +975,7 @@ export class AppComponent implements AfterViewInit {
             };
         }
 
-        // Case 3: Array item -> Array item (require parent arrays to be mapped)
+        // Case 3: Array -> Array (require parent arrays to be mapped)
         if (sourceParent?.type === 'Array' && targetParent?.type === 'Array') {
             const parentArraysMapped = this.mappings.some(m =>
                 m.sourceId === sourceParent._id &&
@@ -1026,13 +1082,19 @@ export class AppComponent implements AfterViewInit {
         return null;
     }
 
-    private addMapping(sourceId, targetId, options?: { index?: number, isForceMapping?, mappingType?: 'copy' | 'iterate' }) {
+    private addMapping(sourceId, targetId, options?: {
+        index?: number,
+        isForceMapping?,
+        mappingType?: 'copy' | 'iterate',
+        iteratorName?: string
+    }) {
         this.mappings.push({
             sourceId,
             targetId,
             ...(options?.index !== undefined ? { index: options.index } : {}),
             ...(options?.isForceMapping ? { isForceMapping: true } : {}),
-            ...(options?.mappingType ? { mappingType: options.mappingType } : {})
+            ...(options?.mappingType ? { mappingType: options.mappingType } : {}),
+            ...(options?.iteratorName ? { iteratorName: options.iteratorName } : {})
         });
 
         this.selectedTargetId = targetId;
@@ -1164,29 +1226,40 @@ export class AppComponent implements AfterViewInit {
 
     onTextAreaDrop(event: DragEvent) {
         event.preventDefault();
-        const textarea = event.target as HTMLTextAreaElement;
         const dataPath = event.dataTransfer?.getData('text/plain');
+        const isIterator = event.dataTransfer?.getData('application/iterator');
+        if (!dataPath) return;
 
-        if (dataPath) {
-            // Get cursor position or end of text
-            const cursorPos = textarea.selectionStart || textarea.value.length;
+        const textarea = event.target as HTMLTextAreaElement;
+        const cursorPos = textarea.selectionStart || textarea.value.length;
+
+        if (isIterator) {
+            // Handle iterator drop
             const textBefore = textarea.value.substring(0, cursorPos);
             const textAfter = textarea.value.substring(cursorPos);
+            textarea.value = `${textBefore}{{${dataPath}}}${textAfter}`;
+        } else {
+            // Existing source drop handling
+            const parentIterator = this.findParentArrayIterator(dataPath);
+            if (parentIterator) {
+                const relativePath = dataPath.replace(parentIterator.arrayPath + '.', '');
+                const insertText = `{{${parentIterator.iteratorName}.${relativePath}}}`;
 
-            // Insert the dataPath with mustache syntax only during drop
-            const newValue = `${textBefore}{{${dataPath}}}${textAfter}`;
-
-            // Update textarea value
-            textarea.value = newValue;
-
-            // Trigger the config change
-            this.onConfigChange({ target: textarea } as any, this.selectedTargetId!);
-
-            // Set cursor position after the inserted text
-            const newCursorPos = cursorPos + dataPath.length + 6; // +6 for {{ }} and spaces
-            textarea.setSelectionRange(newCursorPos, newCursorPos);
-            textarea.focus();
+                const textBefore = textarea.value.substring(0, cursorPos);
+                const textAfter = textarea.value.substring(cursorPos);
+                textarea.value = `${textBefore}${insertText}${textAfter}`;
+            } else {
+                const textBefore = textarea.value.substring(0, cursorPos);
+                const textAfter = textarea.value.substring(cursorPos);
+                textarea.value = `${textBefore}{{${dataPath}}}${textAfter}`;
+            }
         }
+
+        // Update config and cursor position
+        this.onConfigChange({ target: textarea } as any, this.selectedTargetId!);
+        const newCursorPos = cursorPos + dataPath.length + 4;
+        textarea.setSelectionRange(newCursorPos, newCursorPos);
+        textarea.focus();
     }
 
     onMappingTypeChange() {
@@ -1391,11 +1464,20 @@ export class AppComponent implements AfterViewInit {
         const mapping = this.mappings.find(m => m.targetId === target._id);
         const conditions = isConditional ? this.conditionalConfigs[target._id]?.conditions || [] : [];
 
+        // Get iterators for this target
+        const iterators = this.iteratorConfigs[target._id]?.map(config => {
+            const source = this.findSourceById(config.sourceId);
+            return {
+                label: config.iteratorName,
+                value: source?.dataPath || config.customPath
+            };
+        }) || [];
+
         return {
             expression: {
                 type: isConditional ? 'conditional' : 'simple',
                 value: this.targetConfigs[target._id] || '',
-                conditions: conditions
+                conditions: conditions || []
             },
             key: target.dataPathSegs[target.dataPathSegs.length - 1],
             name: target.dataPathSegs[target.dataPathSegs.length - 1],
@@ -1413,6 +1495,7 @@ export class AppComponent implements AfterViewInit {
                 dataPath: source.dataPath,
                 dataPathSegs: source.dataPathSegs
             })),
+            iterators,  // Add iterators to payload
             mappingType: mapping?.mappingType
         };
     }
@@ -1524,5 +1607,113 @@ export class AppComponent implements AfterViewInit {
 
         // Trigger change detection and UI updates
         this.drawConnectionLines();
+    }
+
+    // Add method to handle iterator name prompt
+    private promptForIteratorName(sourceId: string): string | null {
+        let iteratorName: string | null;
+        const source = this.findSourceById(sourceId);
+
+        do {
+            iteratorName = prompt(
+                'Please provide a name for this iterator (cannot be same as source name):',
+                'it1'
+            );
+
+            if (!iteratorName) return null;
+
+            // Check if name matches any source name or is a duplicate
+            if (iteratorName === source?.dataPath.split('.').pop()) {
+                alert('Iterator name cannot be the same as source name. Please choose a different name.');
+                iteratorName = null;
+            } else if (this.isDuplicateIterator(this.selectedTargetId!, iteratorName)) {
+                alert('This iterator name is already in use. Please choose a different name.');
+                iteratorName = null;
+            }
+        } while (!iteratorName);
+
+        return iteratorName;
+    }
+
+    // Add method to get formatted iterator display
+    getIteratorDisplay(targetId: string): string {
+        const configs = this.iteratorConfigs[targetId];
+        if (!configs || configs.length === 0) return '';
+
+        return configs.map(config => {
+            const source = this.findSourceById(config.sourceId);
+            if (!source) return '';
+
+            return `{{${source.dataPath}}}`;
+        }).join('\n');
+    }
+
+    onIteratorChange(event: Event, targetId: string) {
+        const newValue = (event.target as HTMLTextAreaElement).value;
+        if (!this.iteratorConfigs[targetId]) {
+            this.iteratorConfigs[targetId] = [];
+        }
+        // Update or add custom path
+        const config = this.iteratorConfigs[targetId][0] || { sourceId: '', customPath: '' };
+        config.customPath = newValue;
+        this.iteratorConfigs[targetId][0] = config;
+    }
+
+    // Add method to find parent array with iterator
+    findParentArrayIterator(sourceId: string): { iteratorName: string, arrayPath: string } | null {
+        const source = this.findSourceById(sourceId);
+        if (!source) return null;
+
+        // Check each path segment to find parent array
+        for (let i = source.dataPathSegs.length - 1; i >= 0; i--) {
+            const parentPath = source.dataPathSegs.slice(0, i + 1).join('.');
+            const parentId = this.findIdByPath(parentPath);
+            if (!parentId) continue;
+
+            // Check if this parent has an iterator
+            for (const [targetId, configs] of Object.entries(this.iteratorConfigs)) {
+                const config = (configs as IteratorConfig[]).find(c => c.sourceId === parentId);
+                if (config?.iteratorName) {
+                    return {
+                        iteratorName: config.iteratorName,
+                        arrayPath: parentPath
+                    };
+                }
+            }
+        }
+        return null;
+    }
+
+    // Add method to get available iterators for a target
+    getAvailableIterators(targetId: string): string[] {
+        const messages: string[] = [];
+
+        // Get all parent arrays with iterators
+        const target = this.findTargetById(targetId);
+        if (!target) return messages;
+
+        // Look through all iterators
+        Object.entries(this.iteratorConfigs).forEach(([tid, configs]) => {
+            (configs as IteratorConfig[]).forEach(config => {
+                const source = this.findSourceById(config.sourceId);
+                if (source && config.iteratorName) {
+                    messages.push(`Available: ${config.iteratorName} (from ${source.dataPath})`);
+                }
+            });
+        });
+
+        return messages;
+    }
+
+    onIteratorDragStart(event: DragEvent, message: string) {
+        if (event.dataTransfer) {
+            // Extract iterator name from message (e.g., "Available: it1 (from addresses)")
+            const match = message.match(/Available: (\w+)/);
+            if (match) {
+                const iteratorName = match[1];
+                event.dataTransfer.setData('text/plain', iteratorName);
+                event.dataTransfer.setData('application/iterator', 'true');
+            }
+        }
     }
 }

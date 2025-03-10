@@ -76,15 +76,22 @@
                     <!-- Iterator textarea -->
                     <div *ngIf="iteratorConfigs[selectedTargetId]" class="mb-3">
                         <h6 class="text-muted mb-2">Iterator:</h6>
-                        <textarea class="form-control code-view" [value]="iteratorConfigs[selectedTargetId]" readonly>
+                        <textarea class="form-control code-view" [value]="getIteratorDisplay(selectedTargetId)"
+                            (input)="onIteratorChange($event, selectedTargetId)"
+                            placeholder="Enter iterator expression">
                         </textarea>
                     </div>
 
                     <!-- Value textarea -->
-                    <div class="mb-3">
+                    <div class="mb-3" *ngIf="!isConditionalMapping">
                         <h6 class="text-muted mb-2">Value:</h6>
-                        <textarea class="form-control code-view"
-                            [value]="!isConditionalMapping ? getSourceIdsForTarget(selectedTargetId) : (targetConfigs[selectedTargetId] || '')"
+                        <!-- Show available iterators -->
+                        <div *ngFor="let message of getAvailableIterators(selectedTargetId)"
+                            class="text-muted small mb-1 draggable-iterator" draggable="true"
+                            (dragstart)="onIteratorDragStart($event, message)">
+                            {{ message }}
+                        </div>
+                        <textarea class="form-control code-view" [value]="getSourceIdsForTarget(selectedTargetId)"
                             (input)="onConfigChange($event, selectedTargetId)" (dragover)="onTextAreaDragOver($event)"
                             (drop)="onTextAreaDrop($event)">
                         </textarea>
@@ -172,38 +179,32 @@
 <ng-template #sourceItemTemplate let-item>
     <div class="drag-item" #sourceItem [attr.data-id]="item._id" [class.mapped]="getMappedTargets(item._id).length > 0"
         draggable="true" (dragstart)="onDragStart($event, item); $event.stopPropagation()">
-        <div class="p-2 mb-2 bg-light rounded item-header">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <span class="type-badge" [ngClass]="'type-' + item.type.toLowerCase()">{{ item.type }}</span>
-                    {{ item.dataPath }}
-                    <span *ngIf="item.type === 'Array'" class="array-type-badge">
-                        of {{ item.arrayItemType }}
-                        <!-- <button class="btn btn-sm btn-link p-0 ms-2" (click)="createArrayItem(item, $event)"
-                            title="Create array item">
-                            <i class="bi bi-plus-circle"></i>
-                        </button>
-                        <button *ngIf="hasArrayItems(item)" class="btn btn-sm btn-link p-0 ms-1"
-                            (click)="removeLastArrayItem(item, $event)" title="Remove last array item">
-                            <i class="bi bi-dash-circle"></i>
-                        </button> -->
-                    </span>
-                    <div *ngIf="getMappedTargets(item._id).length > 0" class="d-inline-block ms-2">
-                        <span *ngFor="let target of getMappedTargets(item._id)" class="mapping-pill">
-                            → {{ target.dataPath }}
-                            <i class="bi bi-x-circle ms-1" (click)="removeMapping(item._id, target._id, $event)"
-                                title="Remove mapping"></i>
-                        </span>
-                    </div>
-                </div>
-                <div>
-                    <button *ngIf="(item.type === 'Object' && item.objDef?.length) || 
-                                  (item.type === 'Array' && item.arrayItemType === 'Object' && item.arrayItemDef)"
-                        class="btn btn-sm btn-outline-secondary"
-                        (click)="toggleObjectExpansion(item._id); $event.stopPropagation()">
-                        <i class="bi"
-                            [ngClass]="isObjectExpanded(item._id) ? 'bi-chevron-down' : 'bi-chevron-right'"></i>
+        <div class="p-2 mb-2 bg-light rounded d-flex align-items-center">
+            <button *ngIf="(item.type === 'Object' && item.objDef?.length) || 
+                          (item.type === 'Array' && item.arrayItemType === 'Object' && item.arrayItemDef)"
+                class="btn btn-sm p-0 me-2" (click)="toggleObjectExpansion(item._id); $event.stopPropagation()">
+                <i class="bi" [ngClass]="isObjectExpanded(item._id) ? 'bi-chevron-down' : 'bi-chevron-right'"></i>
+            </button>
+            <div>
+                <span class="type-badge" [ngClass]="'type-' + item.type.toLowerCase()">{{ item.type }}</span>
+                {{ item.dataPath }}
+                <span *ngIf="item.type === 'Array'" class="array-type-badge">
+                    of {{ item.arrayItemType }}
+                    <!-- <button class="btn btn-sm btn-link p-0 ms-2" (click)="createArrayItem(item, $event)"
+                        title="Create array item">
+                        <i class="bi bi-plus-circle"></i>
                     </button>
+                    <button *ngIf="hasArrayItems(item)" class="btn btn-sm btn-link p-0 ms-1"
+                        (click)="removeLastArrayItem(item, $event)" title="Remove last array item">
+                        <i class="bi bi-dash-circle"></i>
+                    </button> -->
+                </span>
+                <div *ngIf="getMappedTargets(item._id).length > 0" class="d-inline-block ms-2">
+                    <span *ngFor="let target of getMappedTargets(item._id)" class="mapping-pill">
+                        → {{ target.dataPath }}
+                        <i class="bi bi-x-circle ms-1" (click)="removeMapping(item._id, target._id, $event)"
+                            title="Remove mapping"></i>
+                    </span>
                 </div>
             </div>
         </div>
@@ -233,10 +234,16 @@
 <!-- Target item template -->
 <ng-template #targetItemTemplate let-item>
     <div class="drag-item" #targetItem [attr.data-id]="item._id" [class.mapped]="getMappedSources(item._id).length > 0"
-        [class.selected]="selectedTargetId === item._id" (dragover)="onDragOver($event)" (drop)="onDrop($event, item)">
-
-        <!-- Main target content -->
-        <div class="p-2 mb-2 bg-light rounded d-flex justify-content-between align-items-center">
+        [class.selected]="selectedTargetId === item._id">
+        <!-- Main target content with drop handlers -->
+        <div class="p-2 mb-2 bg-light rounded d-flex align-items-center" (dragover)="onDragOver($event)"
+            (drop)="onDrop($event, item)">
+            <button *ngIf="(item.type === 'Object' && item.objDef?.length) || 
+                          (item.type === 'Array' && item.arrayItemDef?.objDef) ||
+                          (item.arrayIndex !== undefined && item.objDef?.length)" class="btn btn-sm p-0 me-2"
+                (click)="toggleObjectExpansion(item._id); $event.stopPropagation()">
+                <i class="bi" [ngClass]="isObjectExpanded(item._id) ? 'bi-chevron-down' : 'bi-chevron-right'"></i>
+            </button>
             <div class="target-info">
                 <div class="d-flex align-items-center">
                     <span class="type-badge" [ngClass]="'type-' + item.type.toLowerCase()">{{ item.type }}</span>
@@ -259,14 +266,6 @@
                 </span>
             </div>
             <div>
-                <!-- Show expansion button for arrays and array items with nested structure -->
-                <button *ngIf="(item.type === 'Object' && item.objDef?.length) || 
-                              (item.type === 'Array' && item.arrayItemDef?.objDef) ||
-                              (item.arrayIndex !== undefined && item.objDef?.length)"
-                    class="btn btn-sm btn-outline-secondary me-1 btn-expand"
-                    (click)="toggleObjectExpansion(item._id); $event.stopPropagation()">
-                    <i class="bi" [ngClass]="isObjectExpanded(item._id) ? 'bi-chevron-down' : 'bi-chevron-right'"></i>
-                </button>
                 <button class="btn btn-sm btn-outline-secondary function-btn"
                     (click)="toggleTarget(item._id); $event.stopPropagation()"
                     [class.active]="selectedTargetId === item._id">
@@ -275,7 +274,7 @@
             </div>
         </div>
 
-        <!-- Show array item definition when no indices exist -->
+        <!-- Nested properties without drop handlers -->
         <div *ngIf="item.type === 'Array' && !hasArrayItems(item) && item.arrayItemDef?.objDef && isObjectExpanded(item._id)"
             class="nested-properties ms-3 mt-2 array-item-def">
             <div class="array-item-header">Array Item Definition:</div>
@@ -284,7 +283,6 @@
             </div>
         </div>
 
-        <!-- Show nested properties for objects and array items -->
         <div *ngIf="(item.type === 'Object' || item.arrayIndex !== undefined) && isObjectExpanded(item._id) && item.objDef?.length"
             class="nested-properties ms-3 mt-2">
             <div *ngFor="let nestedItem of item.objDef">
@@ -292,7 +290,7 @@
             </div>
         </div>
 
-        <!-- Mapped sources at bottom -->
+        <!-- Mapped sources section -->
         <div *ngIf="getMappedSources(item._id).length > 0" class="mapped-sources p-2">
             <div *ngFor="let source of getMappedSources(item._id)" class="mapping-pill mb-1">
                 ← {{ source.dataPath }}
@@ -300,8 +298,7 @@
                     {{ getMappingDisplay(getMappingForSource(source._id, item._id)) }}
                 </span>
                 <i class="bi bi-x-circle ms-1" (click)="removeMapping(source._id, item._id, $event)"
-                    title="Remove mapping">
-                </i>
+                    title="Remove mapping"></i>
             </div>
         </div>
     </div>
