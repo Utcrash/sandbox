@@ -112,109 +112,109 @@ export class AppComponent implements AfterViewInit, OnInit {
     @ViewChild('targetList') targetList: ElementRef;
 
     ngOnInit(): void {
-        const obj = [
-            {
-                "expression": {
-                    "type": "simple",
-                    "value": "",
-                    "conditions": []
-                },
-                "key": "contactAddresses",
-                "name": "contactAddresses",
-                "target": {
-                    "_id": "target7",
-                    "type": "Array",
-                    "dataPath": "contactAddresses",
-                    "dataPathSegs": [
-                        "contactAddresses"
-                    ],
-                    "arrayItemType": "Object"
-                },
-                "children": [
-                    {
-                        "expression": {
-                            "type": "simple",
-                            "value": "{{fefwef}}",
-                            "conditions": []
-                        },
-                        "key": "line1",
-                        "name": "line1",
-                        "target": {
-                            "_id": "target7_item_1",
-                            "type": "String",
-                            "dataPath": "contactAddresses[].line1",
-                            "dataPathSegs": [
-                                "contactAddresses",
-                                "line1"
-                            ]
-                        },
-                        "children": [],
-                        "sources": [],
-                        "availableIterators": [],
-                        "iterator": {
-                            "key": "efewf",
-                            "value": "addresses"
-                        }
-                    },
-                    {
-                        "expression": {
-                            "type": "simple",
-                            "value": "{{efewf}}",
-                            "conditions": []
-                        },
-                        "key": "city",
-                        "name": "city",
-                        "target": {
-                            "_id": "target7_item_2",
-                            "type": "String",
-                            "dataPath": "contactAddresses[].city",
-                            "dataPathSegs": [
-                                "contactAddresses",
-                                "city"
-                            ]
-                        },
-                        "children": [],
-                        "sources": [],
-                        "availableIterators": [],
-                        "iterator": {
-                            "key": "efewf",
-                            "value": "addresses"
-                        }
-                    }
-                ],
-                "sources": [
-                    {
-                        "_id": "source7",
-                        "type": "Array",
-                        "dataPath": "addresses",
-                        "dataPathSegs": [
-                            "addresses"
-                        ]
-                    },
-                    {
-                        "_id": "source6",
-                        "type": "Array",
-                        "dataPath": "tags",
-                        "dataPathSegs": [
-                            "tags"
-                        ]
-                    }
-                ],
-                "availableIterators": [
-                    {
-                        "label": "efewf",
-                        "value": "addresses"
-                    },
-                    {
-                        "label": "fefwef",
-                        "value": "tags"
-                    }
-                ],
-                "iterator": null
-            }
-        ]
+        // const obj = [
+        //     {
+        //         "expression": {
+        //             "type": "simple",
+        //             "value": "",
+        //             "conditions": []
+        //         },
+        //         "key": "contactAddresses",
+        //         "name": "contactAddresses",
+        //         "target": {
+        //             "_id": "target7",
+        //             "type": "Array",
+        //             "dataPath": "contactAddresses",
+        //             "dataPathSegs": [
+        //                 "contactAddresses"
+        //             ],
+        //             "arrayItemType": "Object"
+        //         },
+        //         "children": [
+        //             {
+        //                 "expression": {
+        //                     "type": "simple",
+        //                     "value": "{{fefwef}}",
+        //                     "conditions": []
+        //                 },
+        //                 "key": "line1",
+        //                 "name": "line1",
+        //                 "target": {
+        //                     "_id": "target7_item_1",
+        //                     "type": "String",
+        //                     "dataPath": "contactAddresses[].line1",
+        //                     "dataPathSegs": [
+        //                         "contactAddresses",
+        //                         "line1"
+        //                     ]
+        //                 },
+        //                 "children": [],
+        //                 "sources": [],
+        //                 "availableIterators": [],
+        //                 "iterator": {
+        //                     "key": "efewf",
+        //                     "value": "addresses"
+        //                 }
+        //             },
+        //             {
+        //                 "expression": {
+        //                     "type": "simple",
+        //                     "value": "{{efewf}}",
+        //                     "conditions": []
+        //                 },
+        //                 "key": "city",
+        //                 "name": "city",
+        //                 "target": {
+        //                     "_id": "target7_item_2",
+        //                     "type": "String",
+        //                     "dataPath": "contactAddresses[].city",
+        //                     "dataPathSegs": [
+        //                         "contactAddresses",
+        //                         "city"
+        //                     ]
+        //                 },
+        //                 "children": [],
+        //                 "sources": [],
+        //                 "availableIterators": [],
+        //                 "iterator": {
+        //                     "key": "efewf",
+        //                     "value": "addresses"
+        //                 }
+        //             }
+        //         ],
+        //         "sources": [
+        //             {
+        //                 "_id": "source7",
+        //                 "type": "Array",
+        //                 "dataPath": "addresses",
+        //                 "dataPathSegs": [
+        //                     "addresses"
+        //                 ]
+        //             },
+        //             {
+        //                 "_id": "source6",
+        //                 "type": "Array",
+        //                 "dataPath": "tags",
+        //                 "dataPathSegs": [
+        //                     "tags"
+        //                 ]
+        //             }
+        //         ],
+        //         "availableIterators": [
+        //             {
+        //                 "label": "efewf",
+        //                 "value": "addresses"
+        //             },
+        //             {
+        //                 "label": "fefwef",
+        //                 "value": "tags"
+        //             }
+        //         ],
+        //         "iterator": null
+        //     }
+        // ]
 
-        this.applyPayload(obj)
+        // this.applyPayload(obj)
     }
 
     get nodeIds() {
