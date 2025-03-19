@@ -20,10 +20,6 @@
     background-color: rgba(13, 110, 253, 0.05);
   }
 
-  &:hover {
-    opacity: 0.7;
-  }
-
   .type-badge {
     vertical-align: middle;
   }
@@ -39,6 +35,45 @@
 
     .nested-properties {
       margin-left: 0;
+    }
+  }
+}
+
+// Item-specific hover effects
+.source-item-content {
+  transition: background-color 0.2s ease, transform 0.1s ease;
+
+  &:hover {
+    background-color: #e9ecef !important;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    cursor: grab;
+  }
+
+  &:active {
+    cursor: grabbing;
+  }
+}
+
+.target-item-content {
+  transition: background-color 0.2s ease, border 0.2s ease;
+
+  &:hover {
+    background-color: #e9ecef !important;
+    border: 1px dashed #6c757d;
+  }
+}
+
+// Make hover active only for immediate children in nested structure
+.nested-properties {
+  .source-item-content,
+  .target-item-content {
+    &:hover {
+      background-color: #e9ecef !important;
+      transform: none;
+      box-shadow: none;
+      border: none;
+      border-left: 2px solid #0d6efd;
     }
   }
 }

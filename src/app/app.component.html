@@ -1,4 +1,11 @@
 <div class="container-fluid mt-5 position-relative" #container>
+    <!-- Add Clear All link -->
+    <div class="position-absolute top-0 end-0 me-3">
+        <a href="#" class="text-danger" (click)="clearAllMappings($event)">
+            <i class="bi bi-trash me-1"></i>Clear All
+        </a>
+    </div>
+
     <!-- SVG container for connection lines -->
     <svg class="connection-lines" [attr.viewBox]="'0 0 ' + getContainerWidth() + ' ' + getContainerHeight()">
         <line *ngFor="let line of connectionLines" [attr.x1]="line.x1" [attr.y1]="line.y1" [attr.x2]="line.x2"
@@ -68,7 +75,7 @@
                             <span *ngFor="let source of getMappedSources(selectedTargetId)"
                                 class="badge bg-light text-dark me-2 mb-2 draggable-source" draggable="true"
                                 (dragstart)="onSourceDragStart($event, source)">
-                                {{ source.dataPath }}
+                                {{ source._id }}
                             </span>
                         </div>
                     </div>
@@ -179,15 +186,19 @@
 <ng-template #sourceItemTemplate let-item>
     <div class="drag-item" #sourceItem [attr.data-id]="item._id" [class.mapped]="getMappedTargets(item._id).length > 0"
         draggable="true" (dragstart)="onDragStart($event, item); $event.stopPropagation()">
-        <div class="p-2 mb-2 bg-light rounded d-flex align-items-center">
+        <div class="p-2 mb-2 bg-light rounded d-flex align-items-center source-item-content">
             <button *ngIf="(item.type === 'Object' && item.objDef?.length) || 
                           (item.type === 'Array' && item.arrayItemType === 'Object' && item.arrayItemDef)"
                 class="btn btn-sm p-0 me-2" (click)="toggleObjectExpansion(item._id); $event.stopPropagation()">
                 <i class="bi" [ngClass]="isObjectExpanded(item._id) ? 'bi-chevron-down' : 'bi-chevron-right'"></i>
             </button>
             <div>
-                <span class="type-badge" [ngClass]="'type-' + item.type.toLowerCase()">{{ item.type }}</span>
-                {{ item.dataPath }}
+                <span class="type-badge" [ngClass]="'type-' + item.type.toLowerCase()">
+                    <span
+                        [innerHTML]="getTypeDisplay(item.type).isIcon ? getTypeDisplay(item.type).display : ''"></span>
+                    <span *ngIf="!getTypeDisplay(item.type).isIcon">{{ getTypeDisplay(item.type).display }}</span>
+                </span>
+                {{ item.name }}
                 <span *ngIf="item.type === 'Array'" class="array-type-badge">
                     of {{ item.arrayItemType }}
                     <!-- <button class="btn btn-sm btn-link p-0 ms-2" (click)="createArrayItem(item, $event)"
@@ -236,8 +247,8 @@
     <div class="drag-item" #targetItem [attr.data-id]="item._id" [class.mapped]="getMappedSources(item._id).length > 0"
         [class.selected]="selectedTargetId === item._id">
         <!-- Main target content with drop handlers -->
-        <div class="p-2 mb-2 bg-light rounded d-flex align-items-center" (dragover)="onDragOver($event)"
-            (drop)="onDrop($event, item)">
+        <div class="p-2 mb-2 bg-light rounded d-flex align-items-center target-item-content"
+            (dragover)="onDragOver($event)" (drop)="onDrop($event, item)">
             <button *ngIf="(item.type === 'Object' && item.objDef?.length) || 
                           (item.type === 'Array' && item.arrayItemDef?.objDef) ||
                           (item.arrayIndex !== undefined && item.objDef?.length)" class="btn btn-sm p-0 me-2"
@@ -246,7 +257,11 @@
             </button>
             <div class="target-info">
                 <div class="d-flex align-items-center">
-                    <span class="type-badge" [ngClass]="'type-' + item.type.toLowerCase()">{{ item.type }}</span>
+                    <span class="type-badge" [ngClass]="'type-' + item.type.toLowerCase()">
+                        <span
+                            [innerHTML]="getTypeDisplay(item.type).isIcon ? getTypeDisplay(item.type).display : ''"></span>
+                        <span *ngIf="!getTypeDisplay(item.type).isIcon">{{ getTypeDisplay(item.type).display }}</span>
+                    </span>
                     {{ item.dataPath }}
                     <span *ngIf="item.type === 'Array'" class="array-type-badge">
                         of {{ item.arrayItemType }}
@@ -293,7 +308,7 @@
         <!-- Mapped sources section -->
         <div *ngIf="getMappedSources(item._id).length > 0" class="mapped-sources p-2">
             <div *ngFor="let source of getMappedSources(item._id)" class="mapping-pill mb-1">
-                ← {{ source.dataPath }}
+                ← {{ source._id }}
                 <span *ngIf="source.type === 'Array' || source._id.includes('_item_')" class="array-mapping-info">
                     {{ getMappingDisplay(getMappingForSource(source._id, item._id)) }}
                 </span>

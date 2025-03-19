@@ -1,4 +1,7 @@
 import { Component, AfterViewInit, ViewChildren, QueryList, ElementRef, HostListener, ViewChild, OnInit } from '@angular/core';
+import { SourceStructureService, SourceItem } from './services/source-structure.service';
+import allSources from './sources.json'
+
 
 interface FieldDefinition {
     _id: string;
@@ -8,7 +11,7 @@ interface FieldDefinition {
     dataPathSegs: string[];
     objDef?: any; // For Object types
     arrayItemType?: 'String' | 'Number' | 'Boolean' | 'Object' | 'Array'; // For Array types
-    arrayItemDef?: FieldDefinition; // For Array of Objects
+    arrayItemDef?: any; // For Array of Objects
     arrayIndex?: number;  // Add this to track array indices
 }
 
@@ -63,12 +66,17 @@ interface IteratorConfig {
     customPath?: string;
 }
 
+interface TypeDisplay {
+    type: string;
+    display: string;  // Can be either a symbol or an HTML icon string
+    isIcon?: boolean;
+}
+
 declare global {
     interface Window {
         angularComponentRef: AppComponent;
     }
 }
-
 @Component({
     selector: 'app-root',
     templateUrl: './app.component.html',
@@ -76,7 +84,7 @@ declare global {
 })
 export class AppComponent implements AfterViewInit, OnInit {
     title = 'sandbox';
-    sources = [];
+    sources: SourceItem[] = [];
     targets = [];
     mappings: ArrayMapping[] = [];
     selectedTargetId: string | null = null;
@@ -90,239 +98,17 @@ export class AppComponent implements AfterViewInit, OnInit {
     // Add property to store mapping type per target
     private targetMappingStates: any = {};
 
-    // Getter/setter for isConditionalMapping
-    get isConditionalMapping() {
-        if (!this.selectedTargetId) return false;
-        return this.targetMappingStates[this.selectedTargetId]?.isConditional || false;
-    }
-
-    set isConditionalMapping(value) {
-        if (!this.selectedTargetId) return;
-        if (!this.targetMappingStates[this.selectedTargetId]) {
-            this.targetMappingStates[this.selectedTargetId] = { isConditional: value };
-        } else {
-            this.targetMappingStates[this.selectedTargetId].isConditional = value;
-        }
-    }
-
-    @ViewChildren('sourceItem') sourceElements!: QueryList<ElementRef>;
-    @ViewChildren('targetItem') targetElements!: QueryList<ElementRef>;
-    @ViewChild('container') container!: ElementRef;
-    @ViewChild('sourceList') sourceList: ElementRef;
-    @ViewChild('targetList') targetList: ElementRef;
-
-    ngOnInit(): void {
-        // const obj = [
-        //     {
-        //         "expression": {
-        //             "type": "simple",
-        //             "value": "",
-        //             "conditions": []
-        //         },
-        //         "key": "contactAddresses",
-        //         "name": "contactAddresses",
-        //         "target": {
-        //             "_id": "target7",
-        //             "type": "Array",
-        //             "dataPath": "contactAddresses",
-        //             "dataPathSegs": [
-        //                 "contactAddresses"
-        //             ],
-        //             "arrayItemType": "Object"
-        //         },
-        //         "children": [
-        //             {
-        //                 "expression": {
-        //                     "type": "simple",
-        //                     "value": "{{fefwef}}",
-        //                     "conditions": []
-        //                 },
-        //                 "key": "line1",
-        //                 "name": "line1",
-        //                 "target": {
-        //                     "_id": "target7_item_1",
-        //                     "type": "String",
-        //                     "dataPath": "contactAddresses[].line1",
-        //                     "dataPathSegs": [
-        //                         "contactAddresses",
-        //                         "line1"
-        //                     ]
-        //                 },
-        //                 "children": [],
-        //                 "sources": [],
-        //                 "availableIterators": [],
-        //                 "iterator": {
-        //                     "key": "efewf",
-        //                     "value": "addresses"
-        //                 }
-        //             },
-        //             {
-        //                 "expression": {
-        //                     "type": "simple",
-        //                     "value": "{{efewf}}",
-        //                     "conditions": []
-        //                 },
-        //                 "key": "city",
-        //                 "name": "city",
-        //                 "target": {
-        //                     "_id": "target7_item_2",
-        //                     "type": "String",
-        //                     "dataPath": "contactAddresses[].city",
-        //                     "dataPathSegs": [
-        //                         "contactAddresses",
-        //                         "city"
-        //                     ]
-        //                 },
-        //                 "children": [],
-        //                 "sources": [],
-        //                 "availableIterators": [],
-        //                 "iterator": {
-        //                     "key": "efewf",
-        //                     "value": "addresses"
-        //                 }
-        //             }
-        //         ],
-        //         "sources": [
-        //             {
-        //                 "_id": "source7",
-        //                 "type": "Array",
-        //                 "dataPath": "addresses",
-        //                 "dataPathSegs": [
-        //                     "addresses"
-        //                 ]
-        //             },
-        //             {
-        //                 "_id": "source6",
-        //                 "type": "Array",
-        //                 "dataPath": "tags",
-        //                 "dataPathSegs": [
-        //                     "tags"
-        //                 ]
-        //             }
-        //         ],
-        //         "availableIterators": [
-        //             {
-        //                 "label": "efewf",
-        //                 "value": "addresses"
-        //             },
-        //             {
-        //                 "label": "fefwef",
-        //                 "value": "tags"
-        //             }
-        //         ],
-        //         "iterator": null
-        //     }
-        // ]
-
-        // this.applyPayload(obj)
-    }
-
-    get nodeIds() {
-        return [...new Set(this.sources.map(item => item.nodeId))];
-    }
-
-    getSourcesByNodeId(nodeId) {
-        return this.sources.filter(item => item.nodeId === nodeId);
-    }
-
-    getMappedTargets(sourceId) {
-        return this.mappings
-            .filter(m => m.sourceId === sourceId)
-            .map(m => this.findTargetById(m.targetId))
-            .filter(t => t !== undefined) as FieldDefinition[];
-    }
-
-    getMappedSources(targetId) {
-        return this.mappings
-            .filter(m => m.targetId === targetId)
-            .map(m => this.findSourceById(m.sourceId))
-            .filter(s => s !== undefined) as FieldDefinition[];
-    }
-
-    getSourceIdsForTarget(targetId) {
-        // Return existing config if it exists
-        if (this.targetConfigs[targetId]) {
-            return this.targetConfigs[targetId];
-        }
-
-        // Check if this is a child of an array
-        const target = this.findTargetById(targetId);
-        if (target && target.dataPath.includes('[]')) {
-            return ''; // Return empty for array children
-        }
-
-        // For non-array children, continue with normal behavior
-        const mappedSources = this.getMappedSources(targetId);
-        if (!mappedSources.length) return '';
-
-        // Check if this target has an iterator config
-        if (this.iteratorConfigs[targetId]) {
-            return '';
-        }
-
-        // Create new template with all mapped sources
-        return mappedSources
-            .map(source => `{{${source.dataPath}}}`)
-            .join(' ');
-    }
-
-    isTargetConfigured(targetId) {
-        // Check if there are any mappings for this target
-        const hasMappings = this.mappings.some(m => m.targetId === targetId);
-
-        // Check if there is a non-empty simple configuration
-        const hasSimpleConfig = this.targetConfigs[targetId]?.trim().length > 0;
-
-        // Check if there is a non-empty conditional configuration
-        const conditionalConfig = this.conditionalConfigs[targetId];
-        const hasConditionalConfig = conditionalConfig && (
-            conditionalConfig.conditions.some(block =>
-                block.condition?.trim().length > 0 ||
-                block.value.trim().length > 0
-            )
-        );
-
-        // Return true only if there are no mappings but there is a non-empty configuration
-        return !hasMappings && (hasSimpleConfig || hasConditionalConfig);
-    }
-
-    onConfigChange(event: Event, targetId) {
-        const textarea = event.target as HTMLTextAreaElement;
-        const newValue = textarea.value.trim();
-
-        if (newValue === '') {
-            // If textarea is empty, remove all mappings and config
-            const mappingsToRemove = this.mappings.filter(m => m.targetId === targetId);
-            mappingsToRemove.forEach(mapping => {
-                this.removeMapping(mapping.sourceId, mapping.targetId, null);
-            });
-            delete this.targetConfigs[targetId];
-            return;
-        }
-
-        // Just update the config value - no pattern checking
-        this.targetConfigs[targetId] = newValue;
-    }
-
-    toggleTarget(targetId) {
-        this.selectedTargetId = this.selectedTargetId === targetId ? null : targetId;
-    }
-
-    toggleObjectExpansion(id) {
-        if (this.expandedObjects.has(id)) {
-            this.expandedObjects.delete(id);
-        } else {
-            this.expandedObjects.add(id);
-        }
-        // Redraw lines after expanding/collapsing
-        setTimeout(() => this.drawConnectionLines(), 100);
-    }
-
-    isObjectExpanded(id) {
-        return this.expandedObjects.has(id);
-    }
-
-    constructor() {
+    // Type display configurations
+    private typeDisplays: TypeDisplay[] = [
+        { type: 'String', display: 'T' },
+        { type: 'Object', display: '{ }' },
+        { type: 'Array', display: '[ ]' },
+        { type: 'Number', display: '#' },
+        { type: 'Boolean', display: 'B' },
+        // Example with icon
+        { type: 'Date', display: '<i class="bi bi-calendar"></i>', isIcon: true }
+    ];
+    constructor(private sourceStructureService: SourceStructureService) {
         // Create sample data with nested objects
         this.sources = [
             { _id: 'source1', type: 'String', nodeId: 'Node1', dataPath: 'firstName', dataPathSegs: ['firstName'] },
@@ -430,6 +216,148 @@ export class AppComponent implements AfterViewInit, OnInit {
             }
         ];
     }
+    getTypeDisplay(type: string): TypeDisplay {
+        return this.typeDisplays.find(td => td.type === type) ||
+            { type, display: type, isIcon: false };
+    }
+
+    // Getter/setter for isConditionalMapping
+    get isConditionalMapping() {
+        if (!this.selectedTargetId) return false;
+        return this.targetMappingStates[this.selectedTargetId]?.isConditional || false;
+    }
+
+    set isConditionalMapping(value) {
+        if (!this.selectedTargetId) return;
+        if (!this.targetMappingStates[this.selectedTargetId]) {
+            this.targetMappingStates[this.selectedTargetId] = { isConditional: value };
+        } else {
+            this.targetMappingStates[this.selectedTargetId].isConditional = value;
+        }
+    }
+
+    @ViewChildren('sourceItem') sourceElements!: QueryList<ElementRef>;
+    @ViewChildren('targetItem') targetElements!: QueryList<ElementRef>;
+    @ViewChild('container') container!: ElementRef;
+    @ViewChild('sourceList') sourceList: ElementRef;
+    @ViewChild('targetList') targetList: ElementRef;
+
+
+    ngOnInit(): void {
+        // Assuming rawSourceData is your input data
+        console.log(allSources);
+        const rawSourceData = allSources;
+        const convertedData = this.sourceStructureService.convertToSourceStructure(rawSourceData);
+        console.log(convertedData);
+        this.sources = convertedData
+    }
+
+    get nodeIds() {
+        return [...new Set(this.sources.map(item => item.nodeId))];
+    }
+
+    getSourcesByNodeId(nodeId: string): SourceItem[] {
+        return this.sources.filter(source => source.nodeId === nodeId);
+    }
+
+    getMappedTargets(sourceId: string) {
+        return this.mappings
+            .filter(m => m.sourceId === sourceId)
+            .map(m => this.findTargetById(m.targetId))
+            .filter(t => t !== undefined) as FieldDefinition[];
+    }
+
+    getMappedSources(targetId: string) {
+        return this.mappings
+            .filter(m => m.targetId === targetId)
+            .map(m => this.findSourceById(m.sourceId))
+            .filter(s => s !== undefined) as FieldDefinition[];
+    }
+
+    getSourceIdsForTarget(targetId: string) {
+        // Return existing config if it exists
+        if (this.targetConfigs[targetId]) {
+            return this.targetConfigs[targetId];
+        }
+
+        // Check if this is a child of an array
+        const target = this.findTargetById(targetId);
+        if (target && target.dataPath.includes('[]')) {
+            return ''; // Return empty for array children
+        }
+
+        // For non-array children, continue with normal behavior
+        const mappedSources = this.getMappedSources(targetId);
+        if (!mappedSources.length) return '';
+
+        // Check if this target has an iterator config
+        if (this.iteratorConfigs[targetId]) {
+            return '';
+        }
+
+        // Create new template with all mapped sources using _id
+        return mappedSources
+            .map(source => `{{${source._id}}}`)
+            .join(' ');
+    }
+
+    isTargetConfigured(targetId: string) {
+        // Check if there are any mappings for this target
+        const hasMappings = this.mappings.some(m => m.targetId === targetId);
+
+        // Check if there is a non-empty simple configuration
+        const hasSimpleConfig = this.targetConfigs[targetId]?.trim().length > 0;
+
+        // Check if there is a non-empty conditional configuration
+        const conditionalConfig = this.conditionalConfigs[targetId];
+        const hasConditionalConfig = conditionalConfig && (
+            conditionalConfig.conditions.some(block =>
+                block.condition?.trim().length > 0 ||
+                block.value.trim().length > 0
+            )
+        );
+
+        // Return true only if there are no mappings but there is a non-empty configuration
+        return !hasMappings && (hasSimpleConfig || hasConditionalConfig);
+    }
+
+    onConfigChange(event: Event, targetId) {
+        const textarea = event.target as HTMLTextAreaElement;
+        const newValue = textarea.value.trim();
+
+        if (newValue === '') {
+            // If textarea is empty, remove all mappings and config
+            const mappingsToRemove = this.mappings.filter(m => m.targetId === targetId);
+            mappingsToRemove.forEach(mapping => {
+                this.removeMapping(mapping.sourceId, mapping.targetId, null);
+            });
+            delete this.targetConfigs[targetId];
+            return;
+        }
+
+        // Just update the config value - no pattern checking
+        this.targetConfigs[targetId] = newValue;
+    }
+
+    toggleTarget(targetId) {
+        this.selectedTargetId = this.selectedTargetId === targetId ? null : targetId;
+    }
+
+    toggleObjectExpansion(id) {
+        if (this.expandedObjects.has(id)) {
+            this.expandedObjects.delete(id);
+        } else {
+            this.expandedObjects.add(id);
+        }
+        // Redraw lines after expanding/collapsing
+        setTimeout(() => this.drawConnectionLines(), 100);
+    }
+
+    isObjectExpanded(id) {
+        return this.expandedObjects.has(id);
+    }
+
+
 
     onDragStart(event: DragEvent, item: any) {
 
@@ -627,7 +555,7 @@ export class AppComponent implements AfterViewInit, OnInit {
         return `${formattedPaths[0]}, ${formattedPaths[1]} +${formattedPaths.length - 2} more`;
     }
 
-    getMappedSourcesTooltip(targetId) {
+    getMappedSourcesTooltip(targetId: string) {
         return this.getMappedSources(targetId)
             .map(s => s.dataPath)
             .join('\n');
@@ -749,7 +677,7 @@ export class AppComponent implements AfterViewInit, OnInit {
     }
 
     // Find a source by ID (including nested sources)
-    findSourceById(id): FieldDefinition | undefined {
+    findSourceById(id) {
         // Check top-level sources
         const source = this.sources.find(s => s._id === id);
         if (source) {
@@ -1334,18 +1262,21 @@ export class AppComponent implements AfterViewInit, OnInit {
         // Find parent array iterator if exists
         const parentIterator = this.findParentArrayIterator(dataPath);
         if (parentIterator) {
-            // Get the field name after the array notation
-            const pathParts = dataPath.split('.');
-            const fieldName = pathParts[pathParts.length - 1];
-            const insertText = `{{${parentIterator.iteratorName}.${fieldName}}}`;
-
-            const textBefore = textarea.value.substring(0, cursorPos);
-            const textAfter = textarea.value.substring(cursorPos);
-            textarea.value = `${textBefore}${insertText}${textAfter}`;
+            // Get the source by dataPath and use its _id
+            const source = this.findSourceByDataPath(dataPath);
+            if (source) {
+                const insertText = `{{${parentIterator.iteratorName}.${source._id}}}`;
+                const textBefore = textarea.value.substring(0, cursorPos);
+                const textAfter = textarea.value.substring(cursorPos);
+                textarea.value = `${textBefore}${insertText}${textAfter}`;
+            }
         } else {
-            const textBefore = textarea.value.substring(0, cursorPos);
-            const textAfter = textarea.value.substring(cursorPos);
-            textarea.value = `${textBefore}{{${dataPath}}}${textAfter}`;
+            const source = this.findSourceByDataPath(dataPath);
+            if (source) {
+                const textBefore = textarea.value.substring(0, cursorPos);
+                const textAfter = textarea.value.substring(cursorPos);
+                textarea.value = `${textBefore}{{${source._id}}}${textAfter}`;
+            }
         }
 
         // Update config and cursor position
@@ -1797,24 +1728,13 @@ export class AppComponent implements AfterViewInit, OnInit {
 
     // Add method to get formatted iterator display
     getIteratorDisplay(targetId: string): string {
-        const configs = this.iteratorConfigs[targetId];
-        if (!configs || configs.length === 0) return '';
-
-        return configs.map(config => {
-            const source = this.findSourceById(config.sourceId);
-            return source ? `{{${config.iteratorName}}}` : '';
-        }).filter(Boolean).join('\n');
+        return this.sourceStructureService.convertToDisplayNotation(this.iteratorConfigs[targetId]);
     }
 
-    onIteratorChange(event: Event, targetId: string) {
-        const newValue = (event.target as HTMLTextAreaElement).value;
-        if (!this.iteratorConfigs[targetId]) {
-            this.iteratorConfigs[targetId] = [];
-        }
-        // Update or add custom path
-        const config = this.iteratorConfigs[targetId][0] || { sourceId: '', customPath: '' };
-        config.customPath = newValue;
-        this.iteratorConfigs[targetId][0] = config;
+    onIteratorChange(event: any, targetId: string) {
+        const value = event.target.value;
+        this.iteratorConfigs[targetId] = this.sourceStructureService.convertToStorageNotation(value);
+        this.drawConnectionLines();
     }
 
     // Add method to get available iterators for a target
@@ -1849,5 +1769,40 @@ export class AppComponent implements AfterViewInit, OnInit {
                 event.dataTransfer.setData('application/iterator', 'true');
             }
         }
+    }
+
+    clearAllMappings(event: Event) {
+        event.preventDefault();
+        if (confirm('Are you sure you want to clear all mappings?')) {
+            this.mappings = [];
+            this.targetConfigs = {};
+            this.conditionalConfigs = {};
+            this.targetMappingStates = {};
+            this.iteratorConfigs = {};
+            this.selectedTargetId = null;
+            this.drawConnectionLines();
+        }
+    }
+
+    // Add this helper method
+    private findSourceByDataPath(dataPath: string): SourceItem | undefined {
+        const findInSources = (sources: SourceItem[]): SourceItem | undefined => {
+            for (const source of sources) {
+                if (source.dataPath === dataPath) return source;
+
+                if (source.objDef) {
+                    const found = findInSources(source.objDef);
+                    if (found) return found;
+                }
+
+                if (source.arrayItemDef?.objDef) {
+                    const found = findInSources(source.arrayItemDef.objDef);
+                    if (found) return found;
+                }
+            }
+            return undefined;
+        };
+
+        return findInSources(this.sources);
     }
 }

@@ -1,0 +1,1033 @@
+[
+    {
+        "key": "data",
+        "type": "Object",
+        "refFormatType": "format",
+        "refFormatId": "DF3230",
+        "refData": {
+            "_id": "DF3230",
+            "name": "J-Shawn",
+            "type": "Object",
+            "definition": [
+                {
+                    "key": "name",
+                    "type": "String",
+                    "properties": {
+                        "name": "Name",
+                        "fieldLength": 10,
+                        "_typeChanged": "String",
+                        "default": null,
+                        "dataPath": "Name",
+                        "dataPathSegs": [
+                            "Name"
+                        ]
+                    },
+                    "_id": "65d5842f70a559b48055c98e"
+                },
+                {
+                    "key": "phone",
+                    "type": "String",
+                    "properties": {
+                        "name": "Phone",
+                        "fieldLength": 10,
+                        "_typeChanged": "String",
+                        "default": null,
+                        "dataPath": "Phone",
+                        "dataPathSegs": [
+                            "Phone"
+                        ]
+                    },
+                    "_id": "65d5842f70a559b48055c98f"
+                },
+                {
+                    "key": "addressList",
+                    "type": "Array",
+                    "definition": [
+                        {
+                            "_fieldId": "57ac44d0-d076-11ee-8ddf-eb695b391952",
+                            "type": "Object",
+                            "key": "_self",
+                            "properties": {
+                                "fieldLength": 10,
+                                "_typeChanged": "Object",
+                                "dataPathSegs": [
+                                    "AddressList",
+                                    "[#]"
+                                ],
+                                "dataPath": "AddressList[#]"
+                            },
+                            "definition": [
+                                {
+                                    "_fieldId": "5ae5ec00-d076-11ee-8ddf-eb695b391952",
+                                    "type": "String",
+                                    "key": "addressLine1",
+                                    "properties": {
+                                        "name": "Address Line 1",
+                                        "fieldLength": 10,
+                                        "_typeChanged": "String",
+                                        "default": null,
+                                        "dataPathSegs": [
+                                            "AddressList",
+                                            "[#]",
+                                            "Address Line 1"
+                                        ],
+                                        "dataPath": "AddressList[#].Address Line 1"
+                                    }
+                                },
+                                {
+                                    "_fieldId": "5e829ac0-d076-11ee-8ddf-eb695b391952",
+                                    "type": "String",
+                                    "key": "addressLine2",
+                                    "properties": {
+                                        "name": "Address Line 2",
+                                        "fieldLength": 10,
+                                        "_typeChanged": "String",
+                                        "default": null,
+                                        "dataPathSegs": [
+                                            "AddressList",
+                                            "[#]",
+                                            "Address Line 2"
+                                        ],
+                                        "dataPath": "AddressList[#].Address Line 2"
+                                    }
+                                },
+                                {
+                                    "_fieldId": "6195ce30-d076-11ee-8ddf-eb695b391952",
+                                    "type": "String",
+                                    "key": "pincode",
+                                    "properties": {
+                                        "name": "Pincode",
+                                        "fieldLength": 10,
+                                        "_typeChanged": "String",
+                                        "default": null,
+                                        "dataPathSegs": [
+                                            "AddressList",
+                                            "[#]",
+                                            "Pincode"
+                                        ],
+                                        "dataPath": "AddressList[#].Pincode"
+                                    }
+                                },
+                                {
+                                    "_fieldId": "6362c600-d076-11ee-8ddf-eb695b391952",
+                                    "type": "Array",
+                                    "key": "nomineeList",
+                                    "properties": {
+                                        "name": "NomineeList",
+                                        "fieldLength": 10,
+                                        "_typeChanged": "Array",
+                                        "dataPathSegs": [
+                                            "AddressList",
+                                            "[#]",
+                                            "NomineeList"
+                                        ],
+                                        "dataPath": "AddressList[#].NomineeList"
+                                    },
+                                    "definition": [
+                                        {
+                                            "_fieldId": "6ced3f70-d076-11ee-8ddf-eb695b391952",
+                                            "type": "Object",
+                                            "key": "_self",
+                                            "properties": {
+                                                "fieldLength": 10,
+                                                "_typeChanged": "Object",
+                                                "dataPathSegs": [
+                                                    "AddressList",
+                                                    "[#]",
+                                                    "NomineeList",
+                                                    "[#]"
+                                                ],
+                                                "dataPath": "AddressList[#].NomineeList[#]"
+                                            },
+                                            "definition": [
+                                                {
+                                                    "_fieldId": "6e1ff310-d076-11ee-8ddf-eb695b391952",
+                                                    "type": "String",
+                                                    "key": "nomineeName",
+                                                    "properties": {
+                                                        "name": "Nominee Name",
+                                                        "fieldLength": 10,
+                                                        "_typeChanged": "String",
+                                                        "default": null,
+                                                        "dataPathSegs": [
+                                                            "AddressList",
+                                                            "[#]",
+                                                            "NomineeList",
+                                                            "[#]",
+                                                            "Nominee Name"
+                                                        ],
+                                                        "dataPath": "AddressList[#].NomineeList[#].Nominee Name"
+                                                    }
+                                                },
+                                                {
+                                                    "_fieldId": "735b0f90-d076-11ee-8ddf-eb695b391952",
+                                                    "type": "String",
+                                                    "key": "nomineePhone",
+                                                    "properties": {
+                                                        "name": "Nominee Phone",
+                                                        "fieldLength": 10,
+                                                        "_typeChanged": "String",
+                                                        "default": null,
+                                                        "dataPathSegs": [
+                                                            "AddressList",
+                                                            "[#]",
+                                                            "NomineeList",
+                                                            "[#]",
+                                                            "Nominee Phone"
+                                                        ],
+                                                        "dataPath": "AddressList[#].NomineeList[#].Nominee Phone"
+                                                    }
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                },
+                                {
+                                    "_fieldId": "7a6c72b0-d076-11ee-8ddf-eb695b391952",
+                                    "type": "Object",
+                                    "key": "secondaryContact",
+                                    "properties": {
+                                        "name": "Secondary Contact",
+                                        "fieldLength": 10,
+                                        "_typeChanged": "Object",
+                                        "dataPathSegs": [
+                                            "AddressList",
+                                            "[#]",
+                                            "Secondary Contact"
+                                        ],
+                                        "dataPath": "AddressList[#].Secondary Contact"
+                                    },
+                                    "definition": [
+                                        {
+                                            "_fieldId": "8e85dd40-d076-11ee-8ddf-eb695b391952",
+                                            "type": "String",
+                                            "key": "name",
+                                            "properties": {
+                                                "name": "Name",
+                                                "fieldLength": 10,
+                                                "_typeChanged": "String",
+                                                "default": null,
+                                                "dataPathSegs": [
+                                                    "AddressList",
+                                                    "[#]",
+                                                    "Secondary Contact",
+                                                    "Name"
+                                                ],
+                                                "dataPath": "AddressList[#].Secondary Contact.Name"
+                                            }
+                                        },
+                                        {
+                                            "_fieldId": "921fcce0-d076-11ee-8ddf-eb695b391952",
+                                            "type": "String",
+                                            "key": "phone",
+                                            "properties": {
+                                                "name": "Phone",
+                                                "fieldLength": 10,
+                                                "_typeChanged": "String",
+                                                "default": null,
+                                                "dataPathSegs": [
+                                                    "AddressList",
+                                                    "[#]",
+                                                    "Secondary Contact",
+                                                    "Phone"
+                                                ],
+                                                "dataPath": "AddressList[#].Secondary Contact.Phone"
+                                            }
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ],
+                    "properties": {
+                        "name": "AddressList",
+                        "fieldLength": 10,
+                        "_typeChanged": "Array",
+                        "dataPath": "AddressList",
+                        "dataPathSegs": [
+                            "AddressList"
+                        ]
+                    },
+                    "_id": "65d5842f70a559b48055c990"
+                }
+            ],
+            "formatType": "JSON",
+            "subType": "flat",
+            "excelType": "xls",
+            "lineSeparator": "\\\\n",
+            "strictValidation": false,
+            "character": ",",
+            "attributeCount": 3,
+            "_selected": true,
+            "dataType": "Object"
+        },
+        "nodeId": "parse_json_2",
+        "name": "data",
+        "dataPath": "data",
+        "dataPathSegs": [
+            "data"
+        ],
+        "mapType": "Object",
+        "schema": [
+            {
+                "key": "name",
+                "name": "Name",
+                "dataPath": "data.Name",
+                "dataPathSegs": [
+                    "data",
+                    "Name"
+                ],
+                "type": "String",
+                "_id": "parse_json_2.data.Name",
+                "nodeId": "parse_json_2"
+            },
+            {
+                "key": "phone",
+                "name": "Phone",
+                "dataPath": "data.Phone",
+                "dataPathSegs": [
+                    "data",
+                    "Phone"
+                ],
+                "type": "String",
+                "_id": "parse_json_2.data.Phone",
+                "nodeId": "parse_json_2"
+            },
+            {
+                "key": "addressList",
+                "name": "AddressList",
+                "dataPath": "data.AddressList",
+                "dataPathSegs": [
+                    "data",
+                    "AddressList"
+                ],
+                "type": "Array",
+                "_id": "parse_json_2.data.AddressList",
+                "nodeId": "parse_json_2",
+                "schema": [
+                    {
+                        "key": "_self",
+                        "name": "_self",
+                        "dataPath": "data.AddressList[#]",
+                        "dataPathSegs": [
+                            "data",
+                            "AddressList",
+                            "[#]"
+                        ],
+                        "type": "Object",
+                        "_id": "parse_json_2.data.AddressList[#]",
+                        "nodeId": "parse_json_2",
+                        "schema": [
+                            {
+                                "key": "addressLine1",
+                                "name": "Address Line 1",
+                                "dataPath": "data.AddressList[#].Address Line 1",
+                                "dataPathSegs": [
+                                    "data",
+                                    "AddressList",
+                                    "[#]",
+                                    "Address Line 1"
+                                ],
+                                "type": "String",
+                                "_id": "parse_json_2.data.AddressList[#].Address Line 1",
+                                "nodeId": "parse_json_2"
+                            },
+                            {
+                                "key": "addressLine2",
+                                "name": "Address Line 2",
+                                "dataPath": "data.AddressList[#].Address Line 2",
+                                "dataPathSegs": [
+                                    "data",
+                                    "AddressList",
+                                    "[#]",
+                                    "Address Line 2"
+                                ],
+                                "type": "String",
+                                "_id": "parse_json_2.data.AddressList[#].Address Line 2",
+                                "nodeId": "parse_json_2"
+                            },
+                            {
+                                "key": "pincode",
+                                "name": "Pincode",
+                                "dataPath": "data.AddressList[#].Pincode",
+                                "dataPathSegs": [
+                                    "data",
+                                    "AddressList",
+                                    "[#]",
+                                    "Pincode"
+                                ],
+                                "type": "String",
+                                "_id": "parse_json_2.data.AddressList[#].Pincode",
+                                "nodeId": "parse_json_2"
+                            },
+                            {
+                                "key": "nomineeList",
+                                "name": "NomineeList",
+                                "dataPath": "data.AddressList[#].NomineeList",
+                                "dataPathSegs": [
+                                    "data",
+                                    "AddressList",
+                                    "[#]",
+                                    "NomineeList"
+                                ],
+                                "type": "Array",
+                                "_id": "parse_json_2.data.AddressList[#].NomineeList",
+                                "nodeId": "parse_json_2",
+                                "schema": [
+                                    {
+                                        "key": "_self",
+                                        "name": "_self",
+                                        "dataPath": "data.AddressList[#].NomineeList[#]",
+                                        "dataPathSegs": [
+                                            "data",
+                                            "AddressList",
+                                            "[#]",
+                                            "NomineeList",
+                                            "[#]"
+                                        ],
+                                        "type": "Object",
+                                        "_id": "parse_json_2.data.AddressList[#].NomineeList[#]",
+                                        "nodeId": "parse_json_2",
+                                        "schema": [
+                                            {
+                                                "key": "nomineeName",
+                                                "name": "Nominee Name",
+                                                "dataPath": "data.AddressList[#].NomineeList[#].Nominee Name",
+                                                "dataPathSegs": [
+                                                    "data",
+                                                    "AddressList",
+                                                    "[#]",
+                                                    "NomineeList",
+                                                    "[#]",
+                                                    "Nominee Name"
+                                                ],
+                                                "type": "String",
+                                                "_id": "parse_json_2.data.AddressList[#].NomineeList[#].Nominee Name",
+                                                "nodeId": "parse_json_2"
+                                            },
+                                            {
+                                                "key": "nomineePhone",
+                                                "name": "Nominee Phone",
+                                                "dataPath": "data.AddressList[#].NomineeList[#].Nominee Phone",
+                                                "dataPathSegs": [
+                                                    "data",
+                                                    "AddressList",
+                                                    "[#]",
+                                                    "NomineeList",
+                                                    "[#]",
+                                                    "Nominee Phone"
+                                                ],
+                                                "type": "String",
+                                                "_id": "parse_json_2.data.AddressList[#].NomineeList[#].Nominee Phone",
+                                                "nodeId": "parse_json_2"
+                                            }
+                                        ]
+                                    }
+                                ]
+                            },
+                            {
+                                "key": "secondaryContact",
+                                "name": "Secondary Contact",
+                                "dataPath": "data.AddressList[#].Secondary Contact",
+                                "dataPathSegs": [
+                                    "data",
+                                    "AddressList",
+                                    "[#]",
+                                    "Secondary Contact"
+                                ],
+                                "type": "Object",
+                                "_id": "parse_json_2.data.AddressList[#].Secondary Contact",
+                                "nodeId": "parse_json_2",
+                                "schema": [
+                                    {
+                                        "key": "name",
+                                        "name": "Name",
+                                        "dataPath": "data.AddressList[#].Secondary Contact.Name",
+                                        "dataPathSegs": [
+                                            "data",
+                                            "AddressList",
+                                            "[#]",
+                                            "Secondary Contact",
+                                            "Name"
+                                        ],
+                                        "type": "String",
+                                        "_id": "parse_json_2.data.AddressList[#].Secondary Contact.Name",
+                                        "nodeId": "parse_json_2"
+                                    },
+                                    {
+                                        "key": "phone",
+                                        "name": "Phone",
+                                        "dataPath": "data.AddressList[#].Secondary Contact.Phone",
+                                        "dataPathSegs": [
+                                            "data",
+                                            "AddressList",
+                                            "[#]",
+                                            "Secondary Contact",
+                                            "Phone"
+                                        ],
+                                        "type": "String",
+                                        "_id": "parse_json_2.data.AddressList[#].Secondary Contact.Phone",
+                                        "nodeId": "parse_json_2"
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            }
+        ],
+        "_id": "parse_json_2.data"
+    },
+    {
+        "key": "query",
+        "type": "KeyValPair",
+        "refData": [
+            {
+                "key": "some",
+                "type": "String"
+            }
+        ],
+        "nodeId": "http_server",
+        "name": "query",
+        "dataPath": "query",
+        "dataPathSegs": [
+            "query"
+        ],
+        "schema": [
+            {
+                "key": "some",
+                "name": "some",
+                "dataPath": "query.some",
+                "dataPathSegs": [
+                    "query",
+                    "some"
+                ],
+                "type": "String",
+                "_id": "http_server.query.some",
+                "nodeId": "http_server"
+            }
+        ],
+        "_id": "http_server.query"
+    },
+    {
+        "key": "headers",
+        "type": "KeyValPair",
+        "refData": [
+            {
+                "key": "check",
+                "type": "String"
+            }
+        ],
+        "nodeId": "http_server",
+        "name": "headers",
+        "dataPath": "headers",
+        "dataPathSegs": [
+            "headers"
+        ],
+        "schema": [
+            {
+                "key": "check",
+                "name": "check",
+                "dataPath": "headers.check",
+                "dataPathSegs": [
+                    "headers",
+                    "check"
+                ],
+                "type": "String",
+                "_id": "http_server.headers.check",
+                "nodeId": "http_server"
+            }
+        ],
+        "_id": "http_server.headers"
+    },
+    {
+        "key": "data",
+        "type": "Buffer",
+        "nodeId": "http_server",
+        "name": "data",
+        "dataPath": "data",
+        "dataPathSegs": [
+            "data"
+        ],
+        "_id": "http_server.data"
+    },
+    {
+        "key": "data",
+        "type": "Object",
+        "refFormatType": "format",
+        "refFormatId": "DF3230",
+        "refData": {
+            "_id": "DF3230",
+            "name": "J-Shawn",
+            "type": "Object",
+            "definition": [
+                {
+                    "key": "name",
+                    "type": "String",
+                    "properties": {
+                        "name": "Name",
+                        "fieldLength": 10,
+                        "_typeChanged": "String",
+                        "default": null,
+                        "dataPath": "Name",
+                        "dataPathSegs": [
+                            "Name"
+                        ]
+                    },
+                    "_id": "65d5842f70a559b48055c98e"
+                },
+                {
+                    "key": "phone",
+                    "type": "String",
+                    "properties": {
+                        "name": "Phone",
+                        "fieldLength": 10,
+                        "_typeChanged": "String",
+                        "default": null,
+                        "dataPath": "Phone",
+                        "dataPathSegs": [
+                            "Phone"
+                        ]
+                    },
+                    "_id": "65d5842f70a559b48055c98f"
+                },
+                {
+                    "key": "addressList",
+                    "type": "Array",
+                    "definition": [
+                        {
+                            "_fieldId": "57ac44d0-d076-11ee-8ddf-eb695b391952",
+                            "type": "Object",
+                            "key": "_self",
+                            "properties": {
+                                "fieldLength": 10,
+                                "_typeChanged": "Object",
+                                "dataPathSegs": [
+                                    "AddressList",
+                                    "[#]"
+                                ],
+                                "dataPath": "AddressList[#]"
+                            },
+                            "definition": [
+                                {
+                                    "_fieldId": "5ae5ec00-d076-11ee-8ddf-eb695b391952",
+                                    "type": "String",
+                                    "key": "addressLine1",
+                                    "properties": {
+                                        "name": "Address Line 1",
+                                        "fieldLength": 10,
+                                        "_typeChanged": "String",
+                                        "default": null,
+                                        "dataPathSegs": [
+                                            "AddressList",
+                                            "[#]",
+                                            "Address Line 1"
+                                        ],
+                                        "dataPath": "AddressList[#].Address Line 1"
+                                    }
+                                },
+                                {
+                                    "_fieldId": "5e829ac0-d076-11ee-8ddf-eb695b391952",
+                                    "type": "String",
+                                    "key": "addressLine2",
+                                    "properties": {
+                                        "name": "Address Line 2",
+                                        "fieldLength": 10,
+                                        "_typeChanged": "String",
+                                        "default": null,
+                                        "dataPathSegs": [
+                                            "AddressList",
+                                            "[#]",
+                                            "Address Line 2"
+                                        ],
+                                        "dataPath": "AddressList[#].Address Line 2"
+                                    }
+                                },
+                                {
+                                    "_fieldId": "6195ce30-d076-11ee-8ddf-eb695b391952",
+                                    "type": "String",
+                                    "key": "pincode",
+                                    "properties": {
+                                        "name": "Pincode",
+                                        "fieldLength": 10,
+                                        "_typeChanged": "String",
+                                        "default": null,
+                                        "dataPathSegs": [
+                                            "AddressList",
+                                            "[#]",
+                                            "Pincode"
+                                        ],
+                                        "dataPath": "AddressList[#].Pincode"
+                                    }
+                                },
+                                {
+                                    "_fieldId": "6362c600-d076-11ee-8ddf-eb695b391952",
+                                    "type": "Array",
+                                    "key": "nomineeList",
+                                    "properties": {
+                                        "name": "NomineeList",
+                                        "fieldLength": 10,
+                                        "_typeChanged": "Array",
+                                        "dataPathSegs": [
+                                            "AddressList",
+                                            "[#]",
+                                            "NomineeList"
+                                        ],
+                                        "dataPath": "AddressList[#].NomineeList"
+                                    },
+                                    "definition": [
+                                        {
+                                            "_fieldId": "6ced3f70-d076-11ee-8ddf-eb695b391952",
+                                            "type": "Object",
+                                            "key": "_self",
+                                            "properties": {
+                                                "fieldLength": 10,
+                                                "_typeChanged": "Object",
+                                                "dataPathSegs": [
+                                                    "AddressList",
+                                                    "[#]",
+                                                    "NomineeList",
+                                                    "[#]"
+                                                ],
+                                                "dataPath": "AddressList[#].NomineeList[#]"
+                                            },
+                                            "definition": [
+                                                {
+                                                    "_fieldId": "6e1ff310-d076-11ee-8ddf-eb695b391952",
+                                                    "type": "String",
+                                                    "key": "nomineeName",
+                                                    "properties": {
+                                                        "name": "Nominee Name",
+                                                        "fieldLength": 10,
+                                                        "_typeChanged": "String",
+                                                        "default": null,
+                                                        "dataPathSegs": [
+                                                            "AddressList",
+                                                            "[#]",
+                                                            "NomineeList",
+                                                            "[#]",
+                                                            "Nominee Name"
+                                                        ],
+                                                        "dataPath": "AddressList[#].NomineeList[#].Nominee Name"
+                                                    }
+                                                },
+                                                {
+                                                    "_fieldId": "735b0f90-d076-11ee-8ddf-eb695b391952",
+                                                    "type": "String",
+                                                    "key": "nomineePhone",
+                                                    "properties": {
+                                                        "name": "Nominee Phone",
+                                                        "fieldLength": 10,
+                                                        "_typeChanged": "String",
+                                                        "default": null,
+                                                        "dataPathSegs": [
+                                                            "AddressList",
+                                                            "[#]",
+                                                            "NomineeList",
+                                                            "[#]",
+                                                            "Nominee Phone"
+                                                        ],
+                                                        "dataPath": "AddressList[#].NomineeList[#].Nominee Phone"
+                                                    }
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                },
+                                {
+                                    "_fieldId": "7a6c72b0-d076-11ee-8ddf-eb695b391952",
+                                    "type": "Object",
+                                    "key": "secondaryContact",
+                                    "properties": {
+                                        "name": "Secondary Contact",
+                                        "fieldLength": 10,
+                                        "_typeChanged": "Object",
+                                        "dataPathSegs": [
+                                            "AddressList",
+                                            "[#]",
+                                            "Secondary Contact"
+                                        ],
+                                        "dataPath": "AddressList[#].Secondary Contact"
+                                    },
+                                    "definition": [
+                                        {
+                                            "_fieldId": "8e85dd40-d076-11ee-8ddf-eb695b391952",
+                                            "type": "String",
+                                            "key": "name",
+                                            "properties": {
+                                                "name": "Name",
+                                                "fieldLength": 10,
+                                                "_typeChanged": "String",
+                                                "default": null,
+                                                "dataPathSegs": [
+                                                    "AddressList",
+                                                    "[#]",
+                                                    "Secondary Contact",
+                                                    "Name"
+                                                ],
+                                                "dataPath": "AddressList[#].Secondary Contact.Name"
+                                            }
+                                        },
+                                        {
+                                            "_fieldId": "921fcce0-d076-11ee-8ddf-eb695b391952",
+                                            "type": "String",
+                                            "key": "phone",
+                                            "properties": {
+                                                "name": "Phone",
+                                                "fieldLength": 10,
+                                                "_typeChanged": "String",
+                                                "default": null,
+                                                "dataPathSegs": [
+                                                    "AddressList",
+                                                    "[#]",
+                                                    "Secondary Contact",
+                                                    "Phone"
+                                                ],
+                                                "dataPath": "AddressList[#].Secondary Contact.Phone"
+                                            }
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ],
+                    "properties": {
+                        "name": "AddressList",
+                        "fieldLength": 10,
+                        "_typeChanged": "Array",
+                        "dataPath": "AddressList",
+                        "dataPathSegs": [
+                            "AddressList"
+                        ]
+                    },
+                    "_id": "65d5842f70a559b48055c990"
+                }
+            ],
+            "formatType": "JSON",
+            "subType": "flat",
+            "excelType": "xls",
+            "lineSeparator": "\\\\n",
+            "strictValidation": false,
+            "character": ",",
+            "attributeCount": 3,
+            "_selected": true,
+            "dataType": "Object"
+        },
+        "nodeId": "parse_json_4",
+        "name": "data",
+        "dataPath": "data",
+        "dataPathSegs": [
+            "data"
+        ],
+        "mapType": "Object",
+        "schema": [
+            {
+                "key": "name",
+                "name": "Name",
+                "dataPath": "data.Name",
+                "dataPathSegs": [
+                    "data",
+                    "Name"
+                ],
+                "type": "String",
+                "_id": "parse_json_4.data.Name",
+                "nodeId": "parse_json_4"
+            },
+            {
+                "key": "phone",
+                "name": "Phone",
+                "dataPath": "data.Phone",
+                "dataPathSegs": [
+                    "data",
+                    "Phone"
+                ],
+                "type": "String",
+                "_id": "parse_json_4.data.Phone",
+                "nodeId": "parse_json_4"
+            },
+            {
+                "key": "addressList",
+                "name": "AddressList",
+                "dataPath": "data.AddressList",
+                "dataPathSegs": [
+                    "data",
+                    "AddressList"
+                ],
+                "type": "Array",
+                "_id": "parse_json_4.data.AddressList",
+                "nodeId": "parse_json_4",
+                "schema": [
+                    {
+                        "key": "_self",
+                        "name": "_self",
+                        "dataPath": "data.AddressList[#]",
+                        "dataPathSegs": [
+                            "data",
+                            "AddressList",
+                            "[#]"
+                        ],
+                        "type": "Object",
+                        "_id": "parse_json_4.data.AddressList[#]",
+                        "nodeId": "parse_json_4",
+                        "schema": [
+                            {
+                                "key": "addressLine1",
+                                "name": "Address Line 1",
+                                "dataPath": "data.AddressList[#].Address Line 1",
+                                "dataPathSegs": [
+                                    "data",
+                                    "AddressList",
+                                    "[#]",
+                                    "Address Line 1"
+                                ],
+                                "type": "String",
+                                "_id": "parse_json_4.data.AddressList[#].Address Line 1",
+                                "nodeId": "parse_json_4"
+                            },
+                            {
+                                "key": "addressLine2",
+                                "name": "Address Line 2",
+                                "dataPath": "data.AddressList[#].Address Line 2",
+                                "dataPathSegs": [
+                                    "data",
+                                    "AddressList",
+                                    "[#]",
+                                    "Address Line 2"
+                                ],
+                                "type": "String",
+                                "_id": "parse_json_4.data.AddressList[#].Address Line 2",
+                                "nodeId": "parse_json_4"
+                            },
+                            {
+                                "key": "pincode",
+                                "name": "Pincode",
+                                "dataPath": "data.AddressList[#].Pincode",
+                                "dataPathSegs": [
+                                    "data",
+                                    "AddressList",
+                                    "[#]",
+                                    "Pincode"
+                                ],
+                                "type": "String",
+                                "_id": "parse_json_4.data.AddressList[#].Pincode",
+                                "nodeId": "parse_json_4"
+                            },
+                            {
+                                "key": "nomineeList",
+                                "name": "NomineeList",
+                                "dataPath": "data.AddressList[#].NomineeList",
+                                "dataPathSegs": [
+                                    "data",
+                                    "AddressList",
+                                    "[#]",
+                                    "NomineeList"
+                                ],
+                                "type": "Array",
+                                "_id": "parse_json_4.data.AddressList[#].NomineeList",
+                                "nodeId": "parse_json_4",
+                                "schema": [
+                                    {
+                                        "key": "_self",
+                                        "name": "_self",
+                                        "dataPath": "data.AddressList[#].NomineeList[#]",
+                                        "dataPathSegs": [
+                                            "data",
+                                            "AddressList",
+                                            "[#]",
+                                            "NomineeList",
+                                            "[#]"
+                                        ],
+                                        "type": "Object",
+                                        "_id": "parse_json_4.data.AddressList[#].NomineeList[#]",
+                                        "nodeId": "parse_json_4",
+                                        "schema": [
+                                            {
+                                                "key": "nomineeName",
+                                                "name": "Nominee Name",
+                                                "dataPath": "data.AddressList[#].NomineeList[#].Nominee Name",
+                                                "dataPathSegs": [
+                                                    "data",
+                                                    "AddressList",
+                                                    "[#]",
+                                                    "NomineeList",
+                                                    "[#]",
+                                                    "Nominee Name"
+                                                ],
+                                                "type": "String",
+                                                "_id": "parse_json_4.data.AddressList[#].NomineeList[#].Nominee Name",
+                                                "nodeId": "parse_json_4"
+                                            },
+                                            {
+                                                "key": "nomineePhone",
+                                                "name": "Nominee Phone",
+                                                "dataPath": "data.AddressList[#].NomineeList[#].Nominee Phone",
+                                                "dataPathSegs": [
+                                                    "data",
+                                                    "AddressList",
+                                                    "[#]",
+                                                    "NomineeList",
+                                                    "[#]",
+                                                    "Nominee Phone"
+                                                ],
+                                                "type": "String",
+                                                "_id": "parse_json_4.data.AddressList[#].NomineeList[#].Nominee Phone",
+                                                "nodeId": "parse_json_4"
+                                            }
+                                        ]
+                                    }
+                                ]
+                            },
+                            {
+                                "key": "secondaryContact",
+                                "name": "Secondary Contact",
+                                "dataPath": "data.AddressList[#].Secondary Contact",
+                                "dataPathSegs": [
+                                    "data",
+                                    "AddressList",
+                                    "[#]",
+                                    "Secondary Contact"
+                                ],
+                                "type": "Object",
+                                "_id": "parse_json_4.data.AddressList[#].Secondary Contact",
+                                "nodeId": "parse_json_4",
+                                "schema": [
+                                    {
+                                        "key": "name",
+                                        "name": "Name",
+                                        "dataPath": "data.AddressList[#].Secondary Contact.Name",
+                                        "dataPathSegs": [
+                                            "data",
+                                            "AddressList",
+                                            "[#]",
+                                            "Secondary Contact",
+                                            "Name"
+                                        ],
+                                        "type": "String",
+                                        "_id": "parse_json_4.data.AddressList[#].Secondary Contact.Name",
+                                        "nodeId": "parse_json_4"
+                                    },
+                                    {
+                                        "key": "phone",
+                                        "name": "Phone",
+                                        "dataPath": "data.AddressList[#].Secondary Contact.Phone",
+                                        "dataPathSegs": [
+                                            "data",
+                                            "AddressList",
+                                            "[#]",
+                                            "Secondary Contact",
+                                            "Phone"
+                                        ],
+                                        "type": "String",
+                                        "_id": "parse_json_4.data.AddressList[#].Secondary Contact.Phone",
+                                        "nodeId": "parse_json_4"
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            }
+        ],
+        "_id": "parse_json_4.data"
+    }
+]
