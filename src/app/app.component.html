@@ -245,13 +245,16 @@
 <!-- Target item template -->
 <ng-template #targetItemTemplate let-item>
     <div class="drag-item" #targetItem [attr.data-id]="item._id" [class.mapped]="getMappedSources(item._id).length > 0"
-        [class.selected]="selectedTargetId === item._id">
+        [class.selected]="selectedTargetId === item._id"
+        [class.disabled]="isTargetDisabled(item) || isAnyParentDisabled(item._id)">
         <!-- Main target content with drop handlers -->
         <div class="p-2 mb-2 bg-light rounded d-flex align-items-center target-item-content"
-            (dragover)="onDragOver($event)" (drop)="onDrop($event, item)">
+            (dragover)="!isTargetDisabled(item) && onDragOver($event)" (drop)="onDrop($event, item)"
+            [class.disabled-content]="isTargetDisabled(item) || isAnyParentDisabled(item._id)">
             <button *ngIf="(item.type === 'Object' && item.objDef?.length) || 
                           (item.type === 'Array' && item.arrayItemDef?.objDef) ||
                           (item.arrayIndex !== undefined && item.objDef?.length)" class="btn btn-sm p-0 me-2"
+                [disabled]="isTargetDisabled(item) || isAnyParentDisabled(item._id)"
                 (click)="toggleObjectExpansion(item._id); $event.stopPropagation()">
                 <i class="bi" [ngClass]="isObjectExpanded(item._id) ? 'bi-chevron-down' : 'bi-chevron-right'"></i>
             </button>
@@ -263,13 +266,16 @@
                         <span *ngIf="!getTypeDisplay(item.type).isIcon">{{ getTypeDisplay(item.type).display }}</span>
                     </span>
                     {{ item.dataPath }}
+                    <span *ngIf="isFieldMandatory(item)" class="text-danger ms-1" title="Mandatory field">*</span>
                     <span *ngIf="item.type === 'Array'" class="array-type-badge">
                         of {{ item.arrayItemType }}
-                        <button class="btn btn-sm btn-link p-0 ms-2" (click)="createArrayItem(item, $event)"
-                            title="Create array item">
+                        <button class="btn btn-sm btn-link p-0 ms-2"
+                            [disabled]="isTargetDisabled(item) || isAnyParentDisabled(item._id)"
+                            (click)="createArrayItem(item, $event)" title="Create array item">
                             <i class="bi bi-plus-circle"></i>
                         </button>
                         <button *ngIf="hasArrayItems(item)" class="btn btn-sm btn-link p-0 ms-1"
+                            [disabled]="isTargetDisabled(item) || isAnyParentDisabled(item._id)"
                             (click)="removeLastArrayItem(item, $event)" title="Remove last array item">
                             <i class="bi bi-dash-circle"></i>
                         </button>
@@ -282,6 +288,7 @@
             </div>
             <div>
                 <button class="btn btn-sm btn-outline-secondary function-btn"
+                    [disabled]="isTargetDisabled(item) || isAnyParentDisabled(item._id)"
                     (click)="toggleTarget(item._id); $event.stopPropagation()"
                     [class.active]="selectedTargetId === item._id">
                     f(x)

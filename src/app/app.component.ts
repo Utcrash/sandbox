@@ -387,6 +387,12 @@ export class AppComponent implements AfterViewInit, OnInit {
 
     onDrop(event: DragEvent, targetItem: any) {
         event.preventDefault();
+
+        // Check if target is disabled
+        if (this.isTargetDisabled(targetItem)) {
+            return;
+        }
+
         const data = event.dataTransfer?.getData('text');
         if (!data) return;
 
@@ -637,6 +643,11 @@ export class AppComponent implements AfterViewInit, OnInit {
     }
 
     activateTarget(targetId, event: MouseEvent) {
+        // Check if target is disabled
+        if (this.isTargetDisabled(targetId)) {
+            return;
+        }
+
         console.log('activateTarget called for:', targetId);
         // Only activate if we're not clicking on the expand/collapse button
         if (!(event.target as HTMLElement).closest('.btn-expand') &&
@@ -920,6 +931,11 @@ export class AppComponent implements AfterViewInit, OnInit {
     removeMapping(sourceId, targetId, event: Event | null) {
         if (event) {
             event.stopPropagation();
+        }
+
+        // Check if target is disabled
+        if (this.isTargetDisabled(targetId)) {
+            return;
         }
 
         // Remove the mapping
@@ -1830,5 +1846,40 @@ export class AppComponent implements AfterViewInit, OnInit {
         };
 
         return findInSources(this.sources);
+    }
+
+    // Add this method to check if a target is disabled
+    isTargetDisabled(target): boolean {
+        // For now, return false. This can be modified based on future requirements
+
+        return target.type === 'Array';
+    }
+
+    // Add helper method to check if any parent is disabled
+    isAnyParentDisabled(item): boolean {
+        const target = this.findTargetById(item._id);
+        if (!target) return false;
+
+        // Check if it's an array item
+        if (target.arrayIndex !== undefined) {
+            const parentArray = this.findParentArray(target);
+            if (parentArray && this.isTargetDisabled(parentArray._id)) {
+                return true;
+            }
+        }
+
+        // Check object parent
+        const parent = this.findParentField(target);
+        if (parent) {
+            return this.isTargetDisabled(parent._id) || this.isAnyParentDisabled(parent._id);
+        }
+
+        return false;
+    }
+
+    // Add this method to check if a field is mandatory
+    isFieldMandatory(target): boolean {
+        // For now, return false. This can be modified based on future requirements
+        return target.dataPath === 'name';
     }
 }
