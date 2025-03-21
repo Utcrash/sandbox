@@ -1254,34 +1254,42 @@ export class AppComponent implements AfterViewInit, OnInit {
     onTextAreaDrop(event: DragEvent) {
         event.preventDefault();
         const dataPath = event.dataTransfer?.getData('text/plain');
+        const isIterator = event.dataTransfer?.getData('application/iterator') === 'true';
+
         if (!dataPath) return;
 
         const textarea = event.target as HTMLTextAreaElement;
         const cursorPos = textarea.selectionStart || textarea.value.length;
 
-        // Find parent array iterator if exists
-        const parentIterator = this.findParentArrayIterator(dataPath);
-        if (parentIterator) {
-            // Get the source by dataPath and use its _id
-            const source = this.findSourceByDataPath(dataPath);
-            if (source) {
-                const insertText = `{{${parentIterator.iteratorName}.${source._id}}}`;
+        if (isIterator) {
+            // For iterator drops, insert the iterator name in mustache notation
+            const insertText = `{{${dataPath}}}`;
+            const textBefore = textarea.value.substring(0, cursorPos);
+            const textAfter = textarea.value.substring(cursorPos);
+            textarea.value = `${textBefore}${insertText}${textAfter}`;
+        } else {
+            // Find parent array iterator if exists
+            const parentIterator = this.findParentArrayIterator(dataPath);
+            if (parentIterator) {
+                // For array items, use the iterator name with bracket notation for the property name
+                const propertyName = dataPath.split('.').pop() || '';
+                const insertText = `{{${parentIterator.iteratorName}['${propertyName}']}}`;
                 const textBefore = textarea.value.substring(0, cursorPos);
                 const textAfter = textarea.value.substring(cursorPos);
                 textarea.value = `${textBefore}${insertText}${textAfter}`;
-            }
-        } else {
-            const source = this.findSourceByDataPath(dataPath);
-            if (source) {
-                const textBefore = textarea.value.substring(0, cursorPos);
-                const textAfter = textarea.value.substring(cursorPos);
-                textarea.value = `${textBefore}{{${source._id}}}${textAfter}`;
+            } else {
+                const source = this.findSourceByDataPath(dataPath);
+                if (source) {
+                    const textBefore = textarea.value.substring(0, cursorPos);
+                    const textAfter = textarea.value.substring(cursorPos);
+                    textarea.value = `${textBefore}{{${source._id}}}${textAfter}`;
+                }
             }
         }
 
         // Update config and cursor position
         this.onConfigChange({ target: textarea } as any, this.selectedTargetId!);
-        const newCursorPos = cursorPos + dataPath.length + 4;
+        const newCursorPos = cursorPos + (isIterator ? dataPath.length + 4 : dataPath.length + 4);
         textarea.setSelectionRange(newCursorPos, newCursorPos);
         textarea.focus();
     }
@@ -1728,12 +1736,30 @@ export class AppComponent implements AfterViewInit, OnInit {
 
     // Add method to get formatted iterator display
     getIteratorDisplay(targetId: string): string {
-        return this.sourceStructureService.convertToDisplayNotation(this.iteratorConfigs[targetId]);
+        const configs = this.iteratorConfigs[targetId];
+        if (!configs || !Array.isArray(configs)) return '';
+
+        return configs.map(config => {
+            const source = this.findSourceById(config.sourceId);
+            return source ? `{{${source._id}}}` : '';
+        }).join(', ');
     }
 
     onIteratorChange(event: any, targetId: string) {
         const value = event.target.value;
-        this.iteratorConfigs[targetId] = this.sourceStructureService.convertToStorageNotation(value);
+        const configs = this.iteratorConfigs[targetId];
+        if (!configs || !Array.isArray(configs)) return;
+
+        // Update the display value with mustache notation
+        const displayValue = configs.map(config => {
+            const source = this.findSourceById(config.sourceId);
+            return source ? `{{${source._id}}}` : '';
+        }).join(', ');
+
+        // Update the event target value
+        event.target.value = displayValue;
+        // Update the display value in the this.targetConfigs[targetId]
+        this.targetConfigs[targetId] = displayValue;
         this.drawConnectionLines();
     }
 
